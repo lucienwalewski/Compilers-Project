@@ -25,19 +25,46 @@ def update_ev(cfg: CFG, ev: dict, val: dict):
         definite_jump = False 
         for jump in block.jumps :
             jump_type = jump.opcode
+            value = val[x]
             if  jump_type == "jmp" and not definite_jump:
                 ev["label"] = True 
+                break
             else :
                 x = jump.arg1 :
-                if val[x] == Constants.non_constant :
+                if value == Constants.non_constant :
                     ev["label"] = True 
-                if val[x] == Constants.unused :
+                if value == Constants.unused :
                     ev["label"] = True 
                 else :
-                    ## check according to type of jump and value of the temporary
-                    definite_jump = True 
+                    if jump_type == "jz" :
+                        if value == 0 :
+                            ev["label"] = True 
+                            definite_jump = True
 
+                    elif jump_type == "jnz" :
+                        if value != 0 :
+                            ev["label"] = True 
+                            definite_jump = True
 
+                    elif jump_type < "jl" :
+                        if value < 0 :
+                            ev["label"] = True 
+                            definite_jump = True
+                        
+                    elif jump_type <= "jle" :
+                        if value <= 0 :
+                            ev["label"] = True 
+                            definite_jump = True  
+
+                    elif jump_type => "jnl" :
+                        if value > 0 :
+                            ev["label"] = True 
+                            definite_jump = True
+
+                    elif jump_type == "jnle" :
+                        if value > 0 :
+                            ev["label"] = True 
+                            definite_jump = True
 
     return change 
 
