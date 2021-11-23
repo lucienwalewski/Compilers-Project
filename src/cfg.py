@@ -98,6 +98,12 @@ class CFG:
         """
         return self._blockmap[lab]
 
+    def blocks(self):
+        """
+        Return the list of block names
+        """
+        return iter(self._blockmap)
+
     def successors(self, lab):
         """Returns iterator over immediate successor blocks"""
         return iter(self._fwd[lab])

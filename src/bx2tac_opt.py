@@ -12,6 +12,8 @@ Returns:
 
 import sys
 import argparse
+from tac import Proc
+from sccp import optimize_sccp
 
 
 if __name__ == '__main__':
@@ -27,5 +29,11 @@ if __name__ == '__main__':
 
     # Lex and parse the input file
     # FIXME
+    tac_list = []
 
     # Once in tac form, perform sccp
+    new_tac_list = []
+    for decl in tac_list:
+        if isinstance(decl, Proc):
+            optimize_sccp(decl)
+        new_tac_list.append(decl)
