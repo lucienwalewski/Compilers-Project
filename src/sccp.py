@@ -2,13 +2,12 @@ import sys
 import argparse
 from enum import Enum, auto
 from ssagen import crude_ssagen
-from tac import Proc
+from tac import Proc, Instr
 from cfg import CFG, infer
 
 
 from typing import List, Union
 
-# from ssagen import *
 import copy
 
 
@@ -51,7 +50,7 @@ def check_jmp_condition(jmp_type: str, value: int):
 
 def update_ev(cfg: CFG, ev: dict[str, bool], val: dict) -> bool:
     '''Update the map ev and return true if any modifications 
-    were made'''
+    are made'''
     modified = False
     for block, executed in ev.items():
         definite_jmp = False  # Set to true when a definite jump is found
@@ -79,48 +78,60 @@ def update_ev(cfg: CFG, ev: dict[str, bool], val: dict) -> bool:
                             break
     return modified
 
+def update_dest(instr: Instr, dest: str, val: dict):
+    if instr.arg2:
+        val[dest] = eval(str(instr.ag1) + instr.opcode + str(instr.arg2))
+    else:
+        val[dest] = eval(instr.opcode + str(instr.arg1))
 
-def update_val(cfg: CFG, ev: dict, val: dict):
-    '''Update the map val'''
-    no_value = [Constants.unused, Constants.non_constant]
-    change = False
-    for label, block in cfg._blockmap.items():
-        if ev[label]:
-            for instruction in block.instrs():
-                dest = instruction.dest
-                arg1, arg2 = instruction.arg1, instruction.arg2
-                opcode = instruction.opcode
-                if opcode != "phi":
-                    if val[arg1] not in no_value and (not arg2 or val[arg2] not in no_value):
-                        # FIXME:
-                        # Differentiate the opcode
-                        val[dest] = val[arg1] + val[arg2]
-                    if (arg1 and val[arg1] == Constants.non_constant) or (arg2 and val[arg2] == Constants.non_constant):
-                        val[dest] = Constants.non_constant
 
+def update_val(cfg: CFG, ev: dict, val: dict) -> bool:
+    '''Update the map val and return true if any modifications
+    are made'''
+    modified = False
+    for block, executed in ev.items():
+        if executed:
+            for instr in cfg._blockmap[block].instrs():
+                dest = instr.dest
+                opcode = instr.opcode
+                if opcode == 'phi':
+                    pass
+                    # FIXME
                 else:
-                    # FIXME:
-                    # Replace with set of tuples
-                    values = {ev[label_block]: val[temp]
-                              for label_block, temp in instruction.uses}
-                    if (True, Constants.non_constant) in values.items():
+                    if all(val[arg] not in {Constants.non_constant, Constants.unused} for arg in instr.uses()):
+                        val[dest] = update_dest(instr, val)
+                    elif any(val[arg] is Constants.non_constant for arg in instr.uses()):
                         val[dest] = Constants.non_constant
-                    else:
-                        change_phi = False
-                        for (label_block, temp) in values:
-                            if not change_phi:
-                                if val[temp] not in no_value:
+                    
 
-                                    for (label_block2, temp2) in values:
-                                        if val[temp2] not in no_value and val[temp2] != val[temp]:
-                                            val[dest] = Constants.non_constant
-                                            change_phi = True
+                
 
-                                    if False not in [(temp2 == temp or val[temp2] == val[temp] or not ev[label_block2]) for label_block2, temp2 in instruction.uses]:
-                                        val[dest] = val[temp]
-                                        change_phi = True
 
-    return change
+
+
+    #                 else:
+    #                 # FIXME:
+    #                 # Replace with set of tuples
+    #                 values = {ev[label_block]: val[temp]
+    #                           for label_block, temp in instruction.uses}
+    #                 if (True, Constants.non_constant) in values.items():
+    #                     val[dest] = Constants.non_constant
+    #                 else:
+    #                     change_phi = False
+    #                     for (label_block, temp) in values:
+    #                         if not change_phi:
+    #                             if val[temp] not in no_value:
+
+    #                                 for (label_block2, temp2) in values:
+    #                                     if val[temp2] not in no_value and val[temp2] != val[temp]:
+    #                                         val[dest] = Constants.non_constant
+    #                                         change_phi = True
+
+    #                                 if False not in [(temp2 == temp or val[temp2] == val[temp] or not ev[label_block2]) for label_block2, temp2 in instruction.uses]:
+    #                                     val[dest] = val[temp]
+    #                                     change_phi = True
+
+    # return change
 
 
 def remove_instrs(cfg: CFG, ev: dict, val: dict):
