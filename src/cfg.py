@@ -4,7 +4,7 @@
 Control Flow Graphs (CFG)
 """
 import re
-from typing import List
+from typing import Iterator, List
 
 import tac
 from io import StringIO
@@ -32,6 +32,12 @@ class Block:
         for instr in reversed(self.jumps):
             yield instr
         for instr in reversed(self.body):
+            yield instr
+
+    def reversed_jumps(self) -> Iterator[tac.Instr]:
+        
+        """Reversed iterator over the jumps in the block"""
+        for instr in reversed(self.jumps):
             yield instr
 
     def first_instr(self):
