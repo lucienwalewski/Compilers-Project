@@ -20,7 +20,7 @@ class Block:
         self.body = list(body or [])
         self.jumps = list(jumps or [])
 
-    def instrs(self):
+    def instrs(self) -> Iterator[tac.Instr]:
         """Iterator over the instructions in the block (excluding label)"""
         for instr in self.body:
             yield instr
@@ -35,7 +35,7 @@ class Block:
             yield instr
 
     def reversed_jumps(self) -> Iterator[tac.Instr]:
-        
+
         """Reversed iterator over the jumps in the block"""
         for instr in reversed(self.jumps):
             yield instr

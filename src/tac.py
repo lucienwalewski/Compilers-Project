@@ -7,6 +7,7 @@ Also includes a parser and interpreter.
 """
 
 from io import StringIO
+from typing import Iterator
 
 # ------------------------------------------------------------------------------
 
@@ -126,7 +127,7 @@ class Instr:
         """Returns an iterator over the temporaries defined in this instruction"""
         if self._istemp(self.dest): yield self.dest
 
-    def uses(self):
+    def uses(self) -> Iterator:
         """Returns an iterator over the temporaries used in this instruction.
         Each item of the terator is either a temporary by itself or a
         2-tuple of the form (label, temporary) that corresponds to an

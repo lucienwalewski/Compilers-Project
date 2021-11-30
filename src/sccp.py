@@ -34,6 +34,7 @@ def initialize_conditions(cfg: CFG):
           for label in cfg._blockmap}
     return ev, val
 
+
 def check_jmp_condition(jmp_type: str, value: int):
     if jmp_type == "jz":
         return value == 0
@@ -48,6 +49,7 @@ def check_jmp_condition(jmp_type: str, value: int):
     elif jmp_type == "jnle":
         return value > 0
 
+
 def update_ev(cfg: CFG, ev: dict[str, bool], val: dict) -> bool:
     '''Update the map ev and return true if any modifications 
     are made'''
@@ -60,34 +62,45 @@ def update_ev(cfg: CFG, ev: dict[str, bool], val: dict) -> bool:
                 value = val[jmp.arg1]
                 dest_block = jmp.arg2
                 if jmp_type == "jmp" and not definite_jmp:
-                    ev[dest_block] = True
-                    modified = True
+                    modified |= update_dict(ev, dest_block, True)
                 else:
                     if value is Constants.non_constant:
-                        ev[dest_block] = True
-                        modified = True
+                        modified |= update_dict(ev, dest_block, True)
                     elif value is Constants.unused:
                         break  # Stop further updates to this block
-                    else: # Definite jump found
-                        modified = True
+                    else:  # Definite jump found
                         if check_jmp_condition(jmp_type, value):
-                            ev[dest_block] = True
+                            modified |= update_dict(ev, dest_block, True)
                             definite_jmp = True
                         else:
-                            ev[dest_block] = False
+                            # FIXME: This may not be correct
                             break
     return modified
 
+
+def update_dict(d: dict, key: str, val: Union[str, Constants, bool]):
+    '''Make an update to the dictionaries ev or val and return true
+    if the dictionary was modified'''
+    old_value = d[key]
+    d[key] = val
+    return old_value != val
+
+
 def update_dest(instr: Instr, dest: str, val: dict):
+    '''Make an update to the dictionary val based on the instruction
+    and return true if the dictionary was modified'''
+    old_value = val[dest]
     if instr.arg2:
         val[dest] = eval(str(instr.ag1) + instr.opcode + str(instr.arg2))
     else:
         val[dest] = eval(instr.opcode + str(instr.arg1))
+    return old_value != val[dest]
 
 
 def update_val(cfg: CFG, ev: dict, val: dict) -> bool:
     '''Update the map val and return true if any modifications
     are made'''
+    consts = {Constants.unused, Constants.non_constant}
     modified = False
     for block, executed in ev.items():
         if executed:
@@ -95,43 +108,30 @@ def update_val(cfg: CFG, ev: dict, val: dict) -> bool:
                 dest = instr.dest
                 opcode = instr.opcode
                 if opcode == 'phi':
-                    pass
-                    # FIXME
+                    for i, (label_i, temporary_i) in enumerate(instr.uses()):
+                        if val[temporary_i] not in {val[dest]} | consts and val[dest] not in consts:
+                            modified |= update_dict(
+                                val, dest, Constants.non_constant)
+                        elif val[temporary_i] is Constants.non_constant and ev[label_i]:
+                            modified |= update_dict(
+                                val, dest, Constants.non_constant)
+                        elif val[temporary_i] not in consts:
+                            condition = True
+                            for j, (label_j, temporary_j) in enumerate(instr.uses()):
+                                if i != j:
+                                    if val[temporary_j] is Constants.unused or not ev[label_j] or val[temporary_j] == val[temporary_i]:
+                                        continue
+                                    else:
+                                        condition = False
+                            if condition:
+                                modified |= update_dict(
+                                    val, dest, val[temporary_i])
                 else:
                     if all(val[arg] not in {Constants.non_constant, Constants.unused} for arg in instr.uses()):
-                        val[dest] = update_dest(instr, val)
+                        modified |= update_dest(instr, dest, val)
                     elif any(val[arg] is Constants.non_constant for arg in instr.uses()):
-                        val[dest] = Constants.non_constant
-                    
-
-                
-
-
-
-
-    #                 else:
-    #                 # FIXME:
-    #                 # Replace with set of tuples
-    #                 values = {ev[label_block]: val[temp]
-    #                           for label_block, temp in instruction.uses}
-    #                 if (True, Constants.non_constant) in values.items():
-    #                     val[dest] = Constants.non_constant
-    #                 else:
-    #                     change_phi = False
-    #                     for (label_block, temp) in values:
-    #                         if not change_phi:
-    #                             if val[temp] not in no_value:
-
-    #                                 for (label_block2, temp2) in values:
-    #                                     if val[temp2] not in no_value and val[temp2] != val[temp]:
-    #                                         val[dest] = Constants.non_constant
-    #                                         change_phi = True
-
-    #                                 if False not in [(temp2 == temp or val[temp2] == val[temp] or not ev[label_block2]) for label_block2, temp2 in instruction.uses]:
-    #                                     val[dest] = val[temp]
-    #                                     change_phi = True
-
-    # return change
+                        modified |= update_dict(
+                            val, dest, Constants.non_constant)
 
 
 def remove_instrs(cfg: CFG, ev: dict, val: dict):
