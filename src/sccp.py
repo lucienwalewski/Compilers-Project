@@ -3,7 +3,10 @@ import argparse
 from enum import Enum, auto
 from ssagen import crude_ssagen
 from tac import Proc, Instr
-from cfg import CFG, infer
+from cfg import CFG, infer, Block
+from tac import *
+import json
+
 
 
 from typing import List, Union
@@ -21,9 +24,16 @@ def fetch_temporaries(cfg: CFG):
     temps = set()
     for label, block in cfg._blockmap.items():
         for instruction in block.instrs():
-            for temp in instruction.uses:
-                temps.add(temp)
-            temp.add(instruction.dest)
+            if instruction.opcode != "phi" :
+                for temp in instruction.uses():
+                    temps.add(temp)
+            else :
+                for temp in instruction.uses() :
+                    temps.add(temp[1])
+                
+                
+            temps.add(instruction.dest)
+            
     return list(temps)
 
 
@@ -50,7 +60,7 @@ def check_jmp_condition(jmp_type: str, value: int):
         return value > 0
 
 
-def update_ev(cfg: CFG, ev: dict[str, bool], val: dict) -> bool:
+def update_ev(cfg: CFG, ev: dict, val: dict) -> bool:
     '''Update the map ev and return true if any modifications 
     are made'''
     modified = False
@@ -59,11 +69,13 @@ def update_ev(cfg: CFG, ev: dict[str, bool], val: dict) -> bool:
         if executed:
             for jmp in cfg._blockmap[block].reversed_jumps():
                 jmp_type = jmp.opcode
-                value = val[jmp.arg1]
-                dest_block = jmp.arg2
+
                 if jmp_type == "jmp" and not definite_jmp:
+                    dest_block = jmp.arg1
                     modified |= update_dict(ev, dest_block, True)
                 else:
+                    value = val[jmp.arg1]
+                    dest_block = jmp.arg2
                     if value is Constants.non_constant:
                         modified |= update_dict(ev, dest_block, True)
                     elif value is Constants.unused:
@@ -109,7 +121,7 @@ def update_val(cfg: CFG, ev: dict, val: dict) -> bool:
                 opcode = instr.opcode
                 if opcode == 'phi':
                     for i, (label_i, temporary_i) in enumerate(instr.uses()):
-                        if val[temporary_i] not in {val[dest]} | consts and val[dest] not in consts:
+                        if val[temporary_i] not in val[dest] | consts and val[dest] not in consts:
                             modified |= update_dict(
                                 val, dest, Constants.non_constant)
                         elif val[temporary_i] is Constants.non_constant and ev[label_i]:
@@ -138,20 +150,81 @@ def remove_instrs(cfg: CFG, ev: dict, val: dict):
     '''When ev and val are fully updated, removed redundant
     instructions.
     '''
-    pass
+    new_blocks = []
+    
+    for label,block in cfg._blockmap.items() :
+        
+        
+        new_body = []
+        for instr in block.body :
+            unused_temp = False
+            uses = [instr.dest] + [(use if len(use)==1 else use[1]) for use in instr.uses() ]
+            for use in uses :
+                if val[use] == Constants.unused :
+                    unused_temp = True
+            if not unused_temp : new_body.append(instr)
+            
+        new_blocks.append(Block(label,new_body,block.jumps))
+        
+    return CFG(cfg.proc_name, cfg.lab_entry, new_blocks)
+
+        
+    
+        
+        
+                
+                    
+            
+    
 
 
 def remove_blocks(cfg: CFG, ev: dict, val: dict):
     '''When ev and val are fully updated, removed redundant
     blocks.
     '''
-    pass
+    new_blocks = []
+    for lab in cfg._blockmap :
+        if ev[lab] :
+            new_blocks.append(cfg._blockmap[lab])
+ 
+    return CFG(cfg.proc_name, cfg.lab_entry, new_blocks)
+        
+    
 
 
 def replace_temporary(cfg: CFG, ev: dict, val: dict):
     '''Whenever we have Val(u) = c ∈ {T,⊥}, we replace u 
-    with c and delete the instruction that sets u
+    with c and delete the instruction that sets u 
     '''
+    
+    # Replace i with c :
+    
+    not_consts = {Constants.unused, Constants.non_constant}
+
+    for block in cfg._blockmap :
+        for instr in block.body :
+            if val[instr.dest] not in not_consts :
+                    instr.dest = val[instr.dest]
+            if instr.opcode != "phi" :
+                if val[instr.arg1] not in not_consts :
+                    instr.arg1 = val[instr.arg1]
+                if val[instr.arg2] not in not_consts :
+                        instr.arg2 = val[instr.arg2]
+            else :
+                # FIXME: Handle phi function case 
+                
+    # FIXME: delete the instruction that sets u :
+    
+    
+                
+                
+                
+                
+                
+        
+
+        
+    
 
 
 def optimize_sccp(decl: Proc):
@@ -164,8 +237,8 @@ def optimize_sccp(decl: Proc):
         modified = False
         modified |= update_ev(cfg, ev, val)
         modified |= update_val(cfg, ev, val)
-    remove_blocks(cfg, ev, val)
-    remove_instrs(cfg, ev, val)
+    cfg = remove_blocks(cfg, ev, val)
+    cfg = remove_instrs(cfg, ev, val)
 
 
 if __name__ == "__main__":
