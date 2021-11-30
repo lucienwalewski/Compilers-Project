@@ -74,7 +74,7 @@ def update_ev(cfg: CFG, ev: dict[str, bool], val: dict) -> bool:
                             definite_jmp = True
                         else:
                             # FIXME: This may not be correct
-                            break
+                            pass
     return modified
 
 
