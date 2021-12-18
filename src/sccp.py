@@ -152,19 +152,13 @@ def remove_instrs(cfg: CFG, ev: dict, val: dict):
     '''
     new_blocks = []
 
-    for label, block in cfg._blockmap.items():
-
+    for label, block in cfg.items():
         new_body = []
         for instr in block.body:
-            unused_temp = False
-            uses = [instr.dest] + [(use if len(use) == 1 else use[1])
-                                   for use in instr.uses()]
-            for use in uses:
-                if val[use] == Constants.unused:
-                    unused_temp = True
-            if not unused_temp:
+            if not any([val[use] == Constants.unused for use in instr.uses()]):
                 new_body.append(instr)
 
+        # Adding block.jumps in the new block is a potential bug
         new_blocks.append(Block(label, new_body, block.jumps))
 
     return CFG(cfg.proc_name, cfg.lab_entry, new_blocks)
@@ -172,14 +166,11 @@ def remove_instrs(cfg: CFG, ev: dict, val: dict):
 
 def remove_blocks(cfg: CFG, ev: dict, val: dict):
     '''When ev and val are fully updated, removed redundant
-    blocks.
+    blocks. Modifies the cfg inplace.
     '''
-    new_blocks = []
-    for lab in cfg._blockmap:
-        if ev[lab]:
-            new_blocks.append(cfg._blockmap[lab])
-
-    return CFG(cfg.proc_name, cfg.lab_entry, new_blocks)
+    for block in ev:
+        if not ev[block]:
+            cfg.remove_node(block)
 
 
 def replace_temporary(cfg: CFG, ev: dict, val: dict):
@@ -218,7 +209,7 @@ def optimize_sccp(decl: Proc):
         modified = False
         modified |= update_ev(cfg, ev, val)
         modified |= update_val(cfg, ev, val)
-    cfg = remove_blocks(cfg, ev, val)
+    remove_blocks(cfg, ev, val)
     cfg = remove_instrs(cfg, ev, val)
 
 
