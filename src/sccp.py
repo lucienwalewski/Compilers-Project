@@ -99,9 +99,11 @@ def update_dict(d: dict, key: str, val: Union[str, Constants, bool]):
 def update_dest(instr: Instr, dest: str, val: dict):
     '''Make an update to the dictionary val based on the instruction
     and return true if the dictionary was modified'''
+    #FIXME : when the instruction is param, the first the function triggers an error
+    #FIXME : need a dictionnary to map optcode to symbol for the eval function : example : "add" --> "+"
     old_value = val[dest]
     if instr.arg2:
-        val[dest] = eval(str(instr.arg1) + instr.opcode + str(instr.arg2))
+        val[dest] = eval(str(val[instr.arg1]) + "+" + str(val[instr.arg2]))
     else:
         if instr.opcode == 'const':
             val[dest] = instr.arg1
@@ -155,8 +157,15 @@ def remove_instrs(cfg: CFG, ev: dict, val: dict):
     for label, block in cfg.items():
         new_body = []
         for instr in block.body:
-            if not any([val[use] == Constants.unused for use in instr.uses()]):
-                new_body.append(instr)
+            #print("--")
+            #print()
+            #print([use[1] if isinstance(use,tuple) else use for use in instr.uses()])
+            #print(val)
+            try :
+                if not any([val[use[1]] == Constants.unused if  isinstance(use,tuple)  else val[use] == Constants.unused for use in instr.uses()]) :
+                    new_body.append(instr)
+                #print("ok")
+            except : print('bug',instr)
 
         # Adding block.jumps in the new block is a potential bug
         new_blocks.append(Block(label, new_body, block.jumps))
@@ -168,9 +177,11 @@ def remove_blocks(cfg: CFG, ev: dict, val: dict):
     '''When ev and val are fully updated, removed redundant
     blocks. Modifies the cfg inplace.
     '''
-    for block in ev:
-        if not ev[block]:
-            cfg.remove_node(block)
+    for label_block in ev:
+        if not ev[label_block]:
+            cfg._blockmap[label_block] = Block(label_block, [], [])
+    
+            
 
 
 def replace_temporary(cfg: CFG, ev: dict, val: dict):
@@ -206,9 +217,13 @@ def optimize_sccp(decl: Proc):
     ev, val = initialize_conditions(cfg)
     modified = True
     while modified:
+        #print(modified)
         modified = False
         modified |= update_ev(cfg, ev, val)
         modified |= update_val(cfg, ev, val)
+    #print("l",val)
+    #for instrs in cfg.instrs():
+        #print(instrs)
     remove_blocks(cfg, ev, val)
     cfg = remove_instrs(cfg, ev, val)
 
@@ -231,8 +246,9 @@ if __name__ == "__main__":
         sys.exit(1)
     # Optimize the declarations
     new_tac_list = []
-    for decl in tac_list:
+    for count,decl in enumerate(tac_list):
         if isinstance(decl, Proc):
+            print("optimizing decl", count+1)
             optimize_sccp(decl)
         new_tac_list.append(decl)
 
