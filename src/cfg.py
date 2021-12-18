@@ -35,7 +35,6 @@ class Block:
             yield instr
 
     def reversed_jumps(self) -> Iterator[tac.Instr]:
-
         """Reversed iterator over the jumps in the block"""
         for instr in reversed(self.jumps):
             yield instr
@@ -109,6 +108,13 @@ class CFG:
         Return the list of block names
         """
         return iter(self._blockmap)
+
+
+    def items(self):
+        """
+        Return the label, block paris of  self._blockmap
+        """
+        return iter(self._blockmap.items())
 
     def successors(self, lab):
         """Returns iterator over immediate successor blocks"""
