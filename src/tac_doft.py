@@ -83,11 +83,17 @@ def optimize_decl(tac_proc: Union[Gvar, Proc]) -> None:
     Optimize a declaration. First perform DSE as many times as necessary,
     then GCP. 
     """
+   
     cfg = infer(tac_proc)
+    
     cfg = DSE(cfg)
+    
+
     cfg = GCP(tac_proc, cfg)
     linearize(tac_proc, cfg)
-
+    print(tac_proc)
+    
+    
 
 def execute(tac_list: List):
     """Execute a TAC program"""
@@ -121,6 +127,7 @@ if __name__ == "__main__":
     for decl in tac_list:
         if isinstance(decl, Proc):
             optimize_decl(decl)
+            
         new_tac_list.append(decl)
 
     # Write the output file if requested

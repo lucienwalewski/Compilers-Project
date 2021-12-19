@@ -3,7 +3,9 @@ import argparse
 from enum import Enum, auto
 from ssagen import crude_ssagen
 from tac import Proc, Instr
+import tac
 from cfg import CFG, infer, Block
+from cfg import *
 from tac import *
 import json
 
@@ -96,19 +98,35 @@ def update_dict(d: dict, key: str, val: Union[str, Constants, bool]):
     return old_value != val
 
 
+binops = {
+    'add' : (lambda u, v: u + v),
+    'sub' : (lambda u, v: u - v),
+    'mul' : (lambda u, v: u * v),
+    'div' : (lambda u, v: int(u / v)),
+    'mod' : (lambda u, v: u - v * int(u / v)),
+    'and' : (lambda u, v: u & v),
+    'or'  : (lambda u, v: u | v),
+    'xor' : (lambda u, v: u ^ v),
+    'shl' : (lambda u, v: u << v),
+    'shr' : (lambda u, v: u >> v),
+}
+unops = {
+    'neg' : (lambda u: -u),
+    'not' : (lambda u: ~u),
+}
+
 def update_dest(instr: Instr, dest: str, val: dict):
     '''Make an update to the dictionary val based on the instruction
     and return true if the dictionary was modified'''
     #FIXME : when the instruction is param, the first the function triggers an error
     #FIXME : need a dictionnary to map optcode to symbol for the eval function : example : "add" --> "+"
     old_value = val[dest]
-    if instr.arg2:
-        val[dest] = eval(str(val[instr.arg1]) + "+" + str(val[instr.arg2]))
-    else:
-        if instr.opcode == 'const':
-            val[dest] = instr.arg1
-        else:
-            val[dest] = eval(instr.opcode + str(instr.arg1))
+    if instr.opcode in binops :
+        val[dest] = binops[instr.opcode](instr.arg1, instr.arg2)
+    elif instr.opcode == 'const':
+        val[dest] = instr.arg1
+    elif instr.opcode in unops :
+        val[dest] = unops[instr.opcode](instr.arg1)
     return old_value != val[dest]
 
 
@@ -178,8 +196,31 @@ def remove_blocks(cfg: CFG, ev: dict, val: dict):
     blocks. Modifies the cfg inplace.
     '''
     for label_block in ev:
+      
         if not ev[label_block]:
-            cfg._blockmap[label_block] = Block(label_block, [], [])
+            dest = cfg._blockmap[label_block].jumps[-1].arg1
+            
+            
+            for block in cfg._blockmap :
+                for jump in cfg._blockmap[block].jumps :
+                    
+                
+                   
+                    if jump.arg1 == label_block :
+                        jump.arg1 = dest
+                    if jump.arg2 == label_block :
+                        jump.arg2 = dest
+                        
+                # for instr in cfg._blockmap[block].body :
+                #     if instr.opcode == "phi" :
+                #         print("phi",instr.arg1)
+                #         for label, temp in instr.arg1.items() :
+                #             if label == label_block :
+                #                 for label_pred in list(cfg._fwd[label_block]) :
+                #                 instr.arg1[]
+                #                 print("forc",cfg._fwd[label_block])
+            
+            
     
             
 
@@ -212,12 +253,16 @@ def replace_temporary(cfg: CFG, ev: dict, val: dict):
 
 def optimize_sccp(decl: Proc):
     '''Perform sccp for the given declaration'''
+    
     cfg = infer(decl)
+    
+    
+    
     crude_ssagen(decl, cfg)
     ev, val = initialize_conditions(cfg)
+    
     modified = True
     while modified:
-        #print(modified)
         modified = False
         modified |= update_ev(cfg, ev, val)
         modified |= update_val(cfg, ev, val)
@@ -225,8 +270,26 @@ def optimize_sccp(decl: Proc):
     #for instrs in cfg.instrs():
         #print(instrs)
     remove_blocks(cfg, ev, val)
+    
+    linearize(decl, cfg)
     cfg = remove_instrs(cfg, ev, val)
+   
+    
+    #print(decl)
+  
 
+
+
+
+def execute(tac_list: List):
+    """Execute a TAC program"""
+    gvars, procs = dict(), dict()
+    for decl in tac_list:
+        if isinstance(decl, Gvar):
+            gvars[decl.name] = decl
+        elif isinstance(decl, Proc):
+            procs[decl.name] = decl
+    tac.execute(gvars, procs, '@main', [])
 
 if __name__ == "__main__":
     # Parse the command line arguments
