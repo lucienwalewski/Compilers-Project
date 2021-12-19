@@ -39,7 +39,13 @@ def fetch_temporaries(cfg: CFG):
 
 def initialize_conditions(cfg: CFG):
     '''Initialise the maps Val and Ev'''
-    val = {v: Constants.unused for v in fetch_temporaries(cfg)}
+    val = dict()
+    for v in fetch_temporaries(cfg) :
+        if v and v[1].isalpha() :
+            val[v] =  Constants.non_constant
+        else :
+            val[v] = Constants.unused
+            
     ev = {label: (True if label == cfg.lab_entry else False)
           for label in cfg._blockmap}
     return ev, val
@@ -63,20 +69,28 @@ def check_jmp_condition(jmp_type: str, value: int):
 def update_ev(cfg: CFG, ev: dict, val: dict) -> bool:
     '''Update the map ev and return true if any modifications 
     are made'''
+    
     modified = False
     for block, executed in ev.items():
         definite_jmp = False  # Set to true when a definite jump is found
         if executed:
+            #print("entry",block)
             for jmp in cfg._blockmap[block].reversed_jumps():
+                
                 jmp_type = jmp.opcode
 
                 if jmp_type == "jmp" and not definite_jmp:
                     dest_block = jmp.arg1
+                    
                     modified |= update_dict(ev, dest_block, True)
-                else:
+                elif jmp_type!="ret" :
+                    
                     value = val[jmp.arg1]
                     dest_block = jmp.arg2
+
+                        
                     if value is Constants.non_constant:
+                        #print("yo",ev)
                         modified |= update_dict(ev, dest_block, True)
                     elif value is Constants.unused:
                         break  # Stop further updates to this block
@@ -142,12 +156,15 @@ def update_val(cfg: CFG, ev: dict, val: dict) -> bool:
                 opcode = instr.opcode
                 if opcode == 'phi':
                     for i, (label_i, temporary_i) in enumerate(instr.uses()):
+
                         if val[temporary_i] not in ({val[dest]} | consts) and val[dest] not in consts:
                             modified |= update_dict(
                                 val, dest, Constants.non_constant)
-                        elif val[temporary_i] is Constants.non_constant and ev[label_i]:
+                        
+                        elif val[temporary_i] is Constants.non_constant and temporary_i[1].isdigit() and ev[label_i]:
                             modified |= update_dict(
                                 val, dest, Constants.non_constant)
+                            
                         elif val[temporary_i] not in consts:
                             condition = True
                             for j, (label_j, temporary_j) in enumerate(instr.uses()):
@@ -158,11 +175,16 @@ def update_val(cfg: CFG, ev: dict, val: dict) -> bool:
                                 modified |= update_dict(
                                     val, dest, val[temporary_i])
                 else:
-                    if all(val[arg] not in {Constants.non_constant, Constants.unused} for arg in instr.uses()):
+                    if opcode == "call" :
+                        modified |= update_dict(
+                                    val, dest, Constants.non_constant)
+                        
+                    elif all(val[arg] not in {Constants.non_constant, Constants.unused} for arg in instr.uses()):
                         modified |= update_dest(instr, dest, val)
                     elif any(val[arg] is Constants.non_constant for arg in instr.uses()):
                         modified |= update_dict(
                             val, dest, Constants.non_constant)
+    #print(val)
     return modified
 
 
@@ -259,23 +281,36 @@ def optimize_sccp(decl: Proc):
     
     
     crude_ssagen(decl, cfg)
+    
     ev, val = initialize_conditions(cfg)
     
+  
+    #print(decl)
+    
     modified = True
+    #print(decl)
     while modified:
         modified = False
+        #print(val)
         modified |= update_ev(cfg, ev, val)
         modified |= update_val(cfg, ev, val)
+        #print(modified)
     #print("l",val)
     #for instrs in cfg.instrs():
         #print(instrs)
+    linearize(decl, cfg)
+    #print(ev)
     remove_blocks(cfg, ev, val)
     
-    linearize(decl, cfg)
+    
+    #print(decl)
     cfg = remove_instrs(cfg, ev, val)
+    #print(val)
+    
    
     
     #print(decl)
+    #print(val)
   
 
 
@@ -311,7 +346,7 @@ if __name__ == "__main__":
     new_tac_list = []
     for count,decl in enumerate(tac_list):
         if isinstance(decl, Proc):
-            print("optimizing decl", count+1)
+            #print("optimizing decl", count+1)
             optimize_sccp(decl)
         new_tac_list.append(decl)
 
@@ -321,6 +356,7 @@ if __name__ == "__main__":
             json.dump([decl.js_obj for decl in new_tac_list], f)
     # Execute the program
     else:
+        
         execute(new_tac_list)
 
         # cfg.write_dot(fname + '.dot')

@@ -507,8 +507,11 @@ def execute(gvars, procs, proc_name, args, **kwargs):
             pc = labels[lab_cur]
         elif instr.opcode in jumps:
             #print(proc)
-            print(instr)
+            #print("---")
+            #print(instr)
             k = values[instr.arg1]
+            #print(k)
+            #print("--")
             if instr.arg2 not in labels:
                 raise RuntimeError(f'Unknown jump destination {instr.arg2}')
             if jumps[instr.opcode](k):
