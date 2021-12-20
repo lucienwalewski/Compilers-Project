@@ -4,9 +4,9 @@ import sys
 from enum import Enum, auto
 from typing import List, Union
 
-from cfg import CFG, Block, infer
+from cfg import CFG, Block, infer, linearize
 from ssagen import crude_ssagen
-from tac import Instr, Proc, load_tac
+from tac import Instr, Proc, load_tac, Gvar, execute
 
 
 class Constants(Enum):
@@ -34,12 +34,12 @@ def fetch_temporaries(cfg: CFG):
 def initialize_conditions(cfg: CFG):
     '''Initialise the maps Val and Ev'''
     val = dict()
-    for v in fetch_temporaries(cfg) :
-        if v and v[1].isalpha() :
-            val[v] =  Constants.non_constant
-        else :
+    for v in fetch_temporaries(cfg):
+        if v and v[1].isalpha():
+            val[v] = Constants.non_constant
+        else:
             val[v] = Constants.unused
-            
+
     ev = {label: (True if label == cfg.lab_entry else False)
           for label in cfg._blockmap}
     return ev, val
@@ -63,28 +63,27 @@ def check_jmp_condition(jmp_type: str, value: int):
 def update_ev(cfg: CFG, ev: dict, val: dict) -> bool:
     '''Update the map ev and return true if any modifications 
     are made'''
-    
+
     modified = False
     for block, executed in ev.items():
         definite_jmp = False  # Set to true when a definite jump is found
         if executed:
-            #print("entry",block)
+            # print("entry",block)
             for jmp in cfg._blockmap[block].reversed_jumps():
-                
+
                 jmp_type = jmp.opcode
 
                 if jmp_type == "jmp" and not definite_jmp:
                     dest_block = jmp.arg1
-                    
+
                     modified |= update_dict(ev, dest_block, True)
-                elif jmp_type!="ret" :
-                    
+                elif jmp_type != "ret":
+
                     value = val[jmp.arg1]
                     dest_block = jmp.arg2
 
-                        
                     if value is Constants.non_constant:
-                        #print("yo",ev)
+                        # print("yo",ev)
                         modified |= update_dict(ev, dest_block, True)
                     elif value is Constants.unused:
                         break  # Stop further updates to this block
@@ -107,33 +106,34 @@ def update_dict(d: dict, key: str, val: Union[str, Constants, bool]):
 
 
 binops = {
-    'add' : (lambda u, v: u + v),
-    'sub' : (lambda u, v: u - v),
-    'mul' : (lambda u, v: u * v),
-    'div' : (lambda u, v: int(u / v)),
-    'mod' : (lambda u, v: u - v * int(u / v)),
-    'and' : (lambda u, v: u & v),
-    'or'  : (lambda u, v: u | v),
-    'xor' : (lambda u, v: u ^ v),
-    'shl' : (lambda u, v: u << v),
-    'shr' : (lambda u, v: u >> v),
+    'add': (lambda u, v: u + v),
+    'sub': (lambda u, v: u - v),
+    'mul': (lambda u, v: u * v),
+    'div': (lambda u, v: int(u / v)),
+    'mod': (lambda u, v: u - v * int(u / v)),
+    'and': (lambda u, v: u & v),
+    'or': (lambda u, v: u | v),
+    'xor': (lambda u, v: u ^ v),
+    'shl': (lambda u, v: u << v),
+    'shr': (lambda u, v: u >> v),
 }
 unops = {
-    'neg' : (lambda u: -u),
-    'not' : (lambda u: ~u),
+    'neg': (lambda u: -u),
+    'not': (lambda u: ~u),
 }
+
 
 def update_dest(instr: Instr, dest: str, val: dict):
     '''Make an update to the dictionary val based on the instruction
     and return true if the dictionary was modified'''
-    #FIXME : when the instruction is param, the first the function triggers an error
-    #FIXME : need a dictionnary to map optcode to symbol for the eval function : example : "add" --> "+"
+    # FIXME : when the instruction is param, the first the function triggers an error
+    # FIXME : need a dictionnary to map optcode to symbol for the eval function : example : "add" --> "+"
     old_value = val[dest]
-    if instr.opcode in binops :
+    if instr.opcode in binops:
         val[dest] = binops[instr.opcode](instr.arg1, instr.arg2)
     elif instr.opcode == 'const':
         val[dest] = instr.arg1
-    elif instr.opcode in unops :
+    elif instr.opcode in unops:
         val[dest] = unops[instr.opcode](instr.arg1)
     return old_value != val[dest]
 
@@ -154,11 +154,11 @@ def update_val(cfg: CFG, ev: dict, val: dict) -> bool:
                         if val[temporary_i] not in ({val[dest]} | consts) and val[dest] not in consts:
                             modified |= update_dict(
                                 val, dest, Constants.non_constant)
-                        
+
                         elif val[temporary_i] is Constants.non_constant and temporary_i[1].isdigit() and ev[label_i]:
                             modified |= update_dict(
                                 val, dest, Constants.non_constant)
-                            
+
                         elif val[temporary_i] not in consts:
                             condition = True
                             for j, (label_j, temporary_j) in enumerate(instr.uses()):
@@ -169,16 +169,16 @@ def update_val(cfg: CFG, ev: dict, val: dict) -> bool:
                                 modified |= update_dict(
                                     val, dest, val[temporary_i])
                 else:
-                    if opcode == "call" :
+                    if opcode == "call":
                         modified |= update_dict(
-                                    val, dest, Constants.non_constant)
-                        
+                            val, dest, Constants.non_constant)
+
                     elif all(val[arg] not in {Constants.non_constant, Constants.unused} for arg in instr.uses()):
                         modified |= update_dest(instr, dest, val)
                     elif any(val[arg] is Constants.non_constant for arg in instr.uses()):
                         modified |= update_dict(
                             val, dest, Constants.non_constant)
-    #print(val)
+    # print(val)
     return modified
 
 
@@ -191,15 +191,16 @@ def remove_instrs(cfg: CFG, ev: dict, val: dict):
     for label, block in cfg.items():
         new_body = []
         for instr in block.body:
-            #print("--")
-            #print()
+            # print("--")
+            # print()
             #print([use[1] if isinstance(use,tuple) else use for use in instr.uses()])
-            #print(val)
-            try :
-                if not any([val[use[1]] == Constants.unused if  isinstance(use,tuple)  else val[use] == Constants.unused for use in instr.uses()]) :
+            # print(val)
+            try:
+                if not any([val[use[1]] == Constants.unused if isinstance(use, tuple) else val[use] == Constants.unused for use in instr.uses()]):
                     new_body.append(instr)
-                #print("ok")
-            except : print('bug',instr)
+                # print("ok")
+            except:
+                print('bug', instr)
 
         # Adding block.jumps in the new block is a potential bug
         new_blocks.append(Block(label, new_body, block.jumps))
@@ -212,42 +213,31 @@ def remove_blocks(cfg: CFG, ev: dict, val: dict):
     blocks. Modifies the cfg inplace.
     '''
     for label_block in ev:
-      
+
         if not ev[label_block]:
             #dest = cfg._blockmap[label_block].jumps[-1].arg1
-            
-            
-            for block in cfg._blockmap :
+
+            for block in cfg._blockmap:
                 new_jump_list = []
-                for jump in cfg._blockmap[block].jumps :
-                    if not (jump.arg1 == label_block or jump.arg2 == label_block) :
+                for jump in cfg._blockmap[block].jumps:
+                    if not (jump.arg1 == label_block or jump.arg2 == label_block):
                         new_jump_list.append(jump)
                 cfg._blockmap[block].jumps = new_jump_list
             cfg.remove_node(cfg._blockmap[label_block])
-            
-            
-                
-                    
-                    
-                
-                   
-                    # if jump.arg1 == label_block :
-                    #     jump.arg1 = dest
-                    # if jump.arg2 == label_block :
-                    #     jump.arg2 = dest
-                        
-                # for instr in cfg._blockmap[block].body :
-                #     if instr.opcode == "phi" :
-                #         print("phi",instr.arg1)
-                #         for label, temp in instr.arg1.items() :
-                #             if label == label_block :
-                #                 for label_pred in list(cfg._fwd[label_block]) :
-                #                 instr.arg1[]
-                #                 print("forc",cfg._fwd[label_block])
-            
-            
-    
-            
+
+            # if jump.arg1 == label_block :
+            #     jump.arg1 = dest
+            # if jump.arg2 == label_block :
+            #     jump.arg2 = dest
+
+            # for instr in cfg._blockmap[block].body :
+            #     if instr.opcode == "phi" :
+            #         print("phi",instr.arg1)
+            #         for label, temp in instr.arg1.items() :
+            #             if label == label_block :
+            #                 for label_pred in list(cfg._fwd[label_block]) :
+            #                 instr.arg1[]
+            #                 print("forc",cfg._fwd[label_block])
 
 
 def replace_temporary(cfg: CFG, ev: dict, val: dict):
@@ -278,45 +268,19 @@ def replace_temporary(cfg: CFG, ev: dict, val: dict):
 
 def optimize_sccp(decl: Proc):
     '''Perform sccp for the given declaration'''
-    
+
     cfg = infer(decl)
-    print(decl)
-    
-    
     crude_ssagen(decl, cfg)
-    
     ev, val = initialize_conditions(cfg)
-    
-  
-    #print(decl)
-    
     modified = True
-    #print(decl)
     while modified:
         modified = False
-        #print(val)
         modified |= update_ev(cfg, ev, val)
         modified |= update_val(cfg, ev, val)
-        #print(modified)
-    #print("l",val)
-    #for instrs in cfg.instrs():
-        #print(instrs)
     linearize(decl, cfg)
-    print(ev)
     remove_blocks(cfg, ev, val)
-    print(decl)
-    
-    #print(decl)
+
     cfg = remove_instrs(cfg, ev, val)
-    #print(val)
-    
-   
-    
-    #print(decl)
-    #print(val)
-  
-
-
 
 
 def execute(tac_list: List):
@@ -327,7 +291,8 @@ def execute(tac_list: List):
             gvars[decl.name] = decl
         elif isinstance(decl, Proc):
             procs[decl.name] = decl
-    tac.execute(gvars, procs, '@main', [])
+    execute(gvars, procs, '@main', [])
+
 
 if __name__ == "__main__":
     # Parse the command line arguments
@@ -347,11 +312,9 @@ if __name__ == "__main__":
         sys.exit(1)
     # Optimize the declarations
     new_tac_list = []
-    for count,decl in enumerate(tac_list):
+    for count, decl in enumerate(tac_list):
         if isinstance(decl, Proc):
-            #print("optimizing decl", count+1)
             optimize_sccp(decl)
-            print(decl)
         new_tac_list.append(decl)
 
     # Write the output file if requested
@@ -360,7 +323,6 @@ if __name__ == "__main__":
             json.dump([decl.js_obj for decl in new_tac_list], f)
     # Execute the program
     else:
-        
         execute(new_tac_list)
 
         # cfg.write_dot(fname + '.dot')
