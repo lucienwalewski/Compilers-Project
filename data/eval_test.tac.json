@@ -59,6 +59,20 @@
         {
           "opcode": "label",
           "args": [
+            "%.L.199999"
+          ],
+          "result": null
+        },
+        {
+          "opcode": "const",
+          "args": [
+            1
+          ],
+          "result": "%0"
+        },
+        {
+          "opcode": "label",
+          "args": [
             "%.L.3"
           ],
           "result": null

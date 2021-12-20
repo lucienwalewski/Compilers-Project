@@ -94,8 +94,8 @@ class CFG:
             for jinstr in bl.jumps:
                 dest = get_jump_dest(jinstr)
                 if dest:
-                    #print(bl.label)
-                    #print(dest)
+                    print(bl.label)
+                    print(dest)
                     self.add_edge(bl.label, dest)
 
     def __getitem__(self, lab):

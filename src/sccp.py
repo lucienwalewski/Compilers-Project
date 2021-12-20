@@ -220,18 +220,27 @@ def remove_blocks(cfg: CFG, ev: dict, val: dict):
     for label_block in ev:
       
         if not ev[label_block]:
-            dest = cfg._blockmap[label_block].jumps[-1].arg1
+            #dest = cfg._blockmap[label_block].jumps[-1].arg1
             
             
             for block in cfg._blockmap :
+                new_jump_list = []
                 for jump in cfg._blockmap[block].jumps :
+                    if not (jump.arg1 == label_block or jump.arg2 == label_block) :
+                        new_jump_list.append(jump)
+                cfg._blockmap[block].jumps = new_jump_list
+            cfg.remove_node(cfg._blockmap[label_block])
+            
+            
+                
+                    
                     
                 
                    
-                    if jump.arg1 == label_block :
-                        jump.arg1 = dest
-                    if jump.arg2 == label_block :
-                        jump.arg2 = dest
+                    # if jump.arg1 == label_block :
+                    #     jump.arg1 = dest
+                    # if jump.arg2 == label_block :
+                    #     jump.arg2 = dest
                         
                 # for instr in cfg._blockmap[block].body :
                 #     if instr.opcode == "phi" :
@@ -277,7 +286,7 @@ def optimize_sccp(decl: Proc):
     '''Perform sccp for the given declaration'''
     
     cfg = infer(decl)
-    
+    print(decl)
     
     
     crude_ssagen(decl, cfg)
@@ -299,9 +308,9 @@ def optimize_sccp(decl: Proc):
     #for instrs in cfg.instrs():
         #print(instrs)
     linearize(decl, cfg)
-    #print(ev)
+    print(ev)
     remove_blocks(cfg, ev, val)
-    
+    print(decl)
     
     #print(decl)
     cfg = remove_instrs(cfg, ev, val)
@@ -348,6 +357,7 @@ if __name__ == "__main__":
         if isinstance(decl, Proc):
             #print("optimizing decl", count+1)
             optimize_sccp(decl)
+            print(decl)
         new_tac_list.append(decl)
 
     # Write the output file if requested

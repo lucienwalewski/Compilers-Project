@@ -513,6 +513,7 @@ def execute(gvars, procs, proc_name, args, **kwargs):
             #print(k)
             #print("--")
             if instr.arg2 not in labels:
+        
                 raise RuntimeError(f'Unknown jump destination {instr.arg2}')
             if jumps[instr.opcode](k):
                 lab_prev, lab_cur = lab_cur, instr.arg2
