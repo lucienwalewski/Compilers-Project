@@ -1,18 +1,12 @@
-import sys
 import argparse
-from enum import Enum, auto
-from ssagen import crude_ssagen
-from tac import Proc, Instr
-import tac
-from cfg import CFG, infer, Block
-from cfg import *
-from tac import *
 import json
-
-
+import sys
+from enum import Enum, auto
 from typing import List, Union
 
-import copy
+from cfg import CFG, Block, infer
+from ssagen import crude_ssagen
+from tac import Instr, Proc, load_tac
 
 
 class Constants(Enum):
