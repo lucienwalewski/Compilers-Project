@@ -277,13 +277,14 @@ def optimize_sccp(decl: Proc):
         modified = False
         modified |= update_ev(cfg, ev, val)
         modified |= update_val(cfg, ev, val)
+    print(decl.name,ev)
+    remove_blocks(cfg, ev, val)    
     linearize(decl, cfg)
-    remove_blocks(cfg, ev, val)
 
     cfg = remove_instrs(cfg, ev, val)
 
 
-def execute(tac_list: List):
+def exe_tac(tac_list: List):
     """Execute a TAC program"""
     gvars, procs = dict(), dict()
     for decl in tac_list:
@@ -323,7 +324,7 @@ if __name__ == "__main__":
             json.dump([decl.js_obj for decl in new_tac_list], f)
     # Execute the program
     else:
-        execute(new_tac_list)
+        exe_tac(new_tac_list)
 
         # cfg.write_dot(fname + '.dot')
         # os.system(f'dot -Tpdf -O {fname}.dot.{tac_unit.name[1:]}.dot')

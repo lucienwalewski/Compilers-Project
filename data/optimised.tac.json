@@ -1,0 +1,381 @@
+[
+    {
+        "var": "@x",
+        "init": 0
+    },
+    {
+        "proc": "@fib",
+        "args": [
+            "%n"
+        ],
+        "body": [
+            {
+                "opcode": "label",
+                "args": [
+                    "%.L0",
+                    null
+                ],
+                "result": null
+            },
+            {
+                "opcode": "phi",
+                "args": [
+                    {
+                        "@fib": "%n"
+                    },
+                    null
+                ],
+                "result": "%n.0"
+            },
+            {
+                "opcode": "copy",
+                "args": [
+                    "%n.0",
+                    null
+                ],
+                "result": "%1.1"
+            },
+            {
+                "opcode": "const",
+                "args": [
+                    2,
+                    null
+                ],
+                "result": "%2.2"
+            },
+            {
+                "opcode": "sub",
+                "args": [
+                    "%1.1",
+                    "%2.2"
+                ],
+                "result": "%1.3"
+            },
+            {
+                "opcode": "jl",
+                "args": [
+                    "%1.3",
+                    "%.L1"
+                ],
+                "result": null
+            },
+            {
+                "opcode": "jmp",
+                "args": [
+                    "%.L3",
+                    null
+                ],
+                "result": null
+            },
+            {
+                "opcode": "label",
+                "args": [
+                    "%.L3",
+                    null
+                ],
+                "result": null
+            },
+            {
+                "opcode": "phi",
+                "args": [
+                    {
+                        "%.L0": "%n.0"
+                    },
+                    null
+                ],
+                "result": "%n.7"
+            },
+            {
+                "opcode": "copy",
+                "args": [
+                    "%n.7",
+                    null
+                ],
+                "result": "%6.8"
+            },
+            {
+                "opcode": "const",
+                "args": [
+                    1,
+                    null
+                ],
+                "result": "%7.9"
+            },
+            {
+                "opcode": "sub",
+                "args": [
+                    "%6.8",
+                    "%7.9"
+                ],
+                "result": "%5.10"
+            },
+            {
+                "opcode": "param",
+                "args": [
+                    1,
+                    "%5.10"
+                ],
+                "result": null
+            },
+            {
+                "opcode": "call",
+                "args": [
+                    "@fib",
+                    1
+                ],
+                "result": "%3.11"
+            },
+            {
+                "opcode": "copy",
+                "args": [
+                    "%n.7",
+                    null
+                ],
+                "result": "%9.12"
+            },
+            {
+                "opcode": "const",
+                "args": [
+                    2,
+                    null
+                ],
+                "result": "%10.13"
+            },
+            {
+                "opcode": "sub",
+                "args": [
+                    "%9.12",
+                    "%10.13"
+                ],
+                "result": "%8.14"
+            },
+            {
+                "opcode": "param",
+                "args": [
+                    1,
+                    "%8.14"
+                ],
+                "result": null
+            },
+            {
+                "opcode": "call",
+                "args": [
+                    "@fib",
+                    1
+                ],
+                "result": "%4.15"
+            },
+            {
+                "opcode": "add",
+                "args": [
+                    "%3.11",
+                    "%4.15"
+                ],
+                "result": "%0.16"
+            },
+            {
+                "opcode": "jmp",
+                "args": [
+                    "%.L2",
+                    null
+                ],
+                "result": null
+            },
+            {
+                "opcode": "label",
+                "args": [
+                    "%.L1",
+                    null
+                ],
+                "result": null
+            },
+            {
+                "opcode": "phi",
+                "args": [
+                    {
+                        "%.L0": "%n.0"
+                    },
+                    null
+                ],
+                "result": "%n.4"
+            },
+            {
+                "opcode": "copy",
+                "args": [
+                    "%n.4",
+                    null
+                ],
+                "result": "%0.5"
+            },
+            {
+                "opcode": "jmp",
+                "args": [
+                    "%.L2",
+                    null
+                ],
+                "result": null
+            },
+            {
+                "opcode": "label",
+                "args": [
+                    "%.L2",
+                    null
+                ],
+                "result": null
+            },
+            {
+                "opcode": "phi",
+                "args": [
+                    {
+                        "%.L1": "%0.5",
+                        "%.L3": "%0.16"
+                    },
+                    null
+                ],
+                "result": "%0.6"
+            },
+            {
+                "opcode": "ret",
+                "args": [
+                    "%0.6",
+                    null
+                ],
+                "result": null
+            }
+        ]
+    },
+    {
+        "proc": "@main",
+        "args": [],
+        "body": [
+            {
+                "opcode": "label",
+                "args": [
+                    "%.L0",
+                    null
+                ],
+                "result": null
+            },
+            {
+                "opcode": "jmp",
+                "args": [
+                    "%.L1",
+                    null
+                ],
+                "result": null
+            },
+            {
+                "opcode": "label",
+                "args": [
+                    "%.L1",
+                    null
+                ],
+                "result": null
+            },
+            {
+                "opcode": "copy",
+                "args": [
+                    "@x",
+                    null
+                ],
+                "result": "%2.0"
+            },
+            {
+                "opcode": "param",
+                "args": [
+                    1,
+                    "%2.0"
+                ],
+                "result": null
+            },
+            {
+                "opcode": "call",
+                "args": [
+                    "@fib",
+                    1
+                ],
+                "result": "%1.1"
+            },
+            {
+                "opcode": "copy",
+                "args": [
+                    "%1.1",
+                    null
+                ],
+                "result": "%3.2"
+            },
+            {
+                "opcode": "param",
+                "args": [
+                    1,
+                    "%3.2"
+                ],
+                "result": null
+            },
+            {
+                "opcode": "call",
+                "args": [
+                    "@__bx_print_int",
+                    1
+                ],
+                "result": null
+            },
+            {
+                "opcode": "copy",
+                "args": [
+                    "@x",
+                    null
+                ],
+                "result": "%4.3"
+            },
+            {
+                "opcode": "const",
+                "args": [
+                    1,
+                    null
+                ],
+                "result": "%5.4"
+            },
+            {
+                "opcode": "add",
+                "args": [
+                    "%4.3",
+                    "%5.4"
+                ],
+                "result": "@x"
+            },
+            {
+                "opcode": "copy",
+                "args": [
+                    "@x",
+                    null
+                ],
+                "result": "%6.5"
+            },
+            {
+                "opcode": "const",
+                "args": [
+                    20,
+                    null
+                ],
+                "result": "%7.6"
+            },
+            {
+                "opcode": "sub",
+                "args": [
+                    "%6.5",
+                    "%7.6"
+                ],
+                "result": "%6.7"
+            },
+            {
+                "opcode": "jmp",
+                "args": [
+                    "%.L1",
+                    null
+                ],
+                "result": null
+            }
+        ]
+    }
+]
