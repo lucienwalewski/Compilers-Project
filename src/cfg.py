@@ -158,6 +158,9 @@ class CFG:
         for lab_to in self._fwd[block.label]:
             self._bwd[lab_to].remove(block.label)
         del self._fwd[block.label]
+        for lab_to in self._bwd[block.label]:
+            self._fwd[lab_to].remove(block.label)
+        del self._bwd[block.label]
 
     def add_edge(self, lab_from, lab_to):
         self._fwd[lab_from].add(lab_to)
