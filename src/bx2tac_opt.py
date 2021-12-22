@@ -14,6 +14,7 @@ import sys
 import argparse
 from tac import Proc
 from sccp import optimize_sccp
+import tac
 
 
 
@@ -35,7 +36,10 @@ if __name__ == '__main__':
 
     # Once in tac form, perform sccp
     new_tac_list = []
+    print("yo")
     for decl in tac_list:
+        print(decl)
         if isinstance(decl, Proc):
+            print("test")
             optimize_sccp(decl)
         new_tac_list.append(decl)

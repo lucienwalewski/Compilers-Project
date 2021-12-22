@@ -4,7 +4,7 @@
 Control Flow Graphs (CFG)
 """
 import re
-from typing import List
+from typing import Iterator, List
 
 import tac
 from io import StringIO
@@ -20,7 +20,7 @@ class Block:
         self.body = list(body or [])
         self.jumps = list(jumps or [])
 
-    def instrs(self):
+    def instrs(self) -> Iterator[tac.Instr]:
         """Iterator over the instructions in the block (excluding label)"""
         for instr in self.body:
             yield instr
@@ -32,6 +32,11 @@ class Block:
         for instr in reversed(self.jumps):
             yield instr
         for instr in reversed(self.body):
+            yield instr
+
+    def reversed_jumps(self) -> Iterator[tac.Instr]:
+        """Reversed iterator over the jumps in the block"""
+        for instr in reversed(self.jumps):
             yield instr
 
     def first_instr(self):
@@ -103,6 +108,13 @@ class CFG:
         Return the list of block names
         """
         return iter(self._blockmap)
+
+
+    def items(self):
+        """
+        Return the label, block paris of  self._blockmap
+        """
+        return iter(self._blockmap.items())
 
     def successors(self, lab):
         """Returns iterator over immediate successor blocks"""

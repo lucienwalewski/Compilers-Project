@@ -7,6 +7,7 @@ Also includes a parser and interpreter.
 """
 
 from io import StringIO
+from typing import Iterator
 
 # ------------------------------------------------------------------------------
 
@@ -126,7 +127,7 @@ class Instr:
         """Returns an iterator over the temporaries defined in this instruction"""
         if self._istemp(self.dest): yield self.dest
 
-    def uses(self):
+    def uses(self) -> Iterator:
         """Returns an iterator over the temporaries used in this instruction.
         Each item of the terator is either a temporary by itself or a
         2-tuple of the form (label, temporary) that corresponds to an
@@ -489,10 +490,12 @@ def execute(gvars, procs, proc_name, args, **kwargs):
             lab_prev, lab_cur = lab_cur, instr.arg1
         elif instr.opcode == 'phi':
             for lab, tmp in instr.arg1.items():
+                #print(instr)
                 if lab == lab_prev:
                     values[instr.dest] = oldvalues[tmp]
                     break
             else:
+                
                 raise RuntimeError(f'cannot resolve phi: '
                                    f'came from {lab_prev}, '
                                    f'can only handle [{",".join(instr.arg1.keys())}]')
@@ -503,8 +506,14 @@ def execute(gvars, procs, proc_name, args, **kwargs):
             oldvalues = values.copy()
             pc = labels[lab_cur]
         elif instr.opcode in jumps:
+            #print(proc)
+            #print("---")
+            #print(instr)
             k = values[instr.arg1]
+            #print(k)
+            #print("--")
             if instr.arg2 not in labels:
+        
                 raise RuntimeError(f'Unknown jump destination {instr.arg2}')
             if jumps[instr.opcode](k):
                 lab_prev, lab_cur = lab_cur, instr.arg2
@@ -524,6 +533,9 @@ def execute(gvars, procs, proc_name, args, **kwargs):
             # make params big enough to hold instr.arg1 items
             for _ in range(instr.arg1 - len(params)):
                 params.append(None)
+            #print("arggg",instr.arg2)
+            #print(values)
+            #print(instr)
             params[instr.arg1 - 1] = values[instr.arg2]
         elif instr.opcode == 'call':
             if instr.arg1.startswith('@__bx_print'):
