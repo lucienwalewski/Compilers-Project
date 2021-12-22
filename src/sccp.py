@@ -28,6 +28,9 @@ def fetch_temporaries(cfg: CFG):
 
             temps.add(instruction.dest)
 
+    if None in temps: 
+        temps.remove(None)
+
     return list(temps)
 
 
@@ -83,7 +86,6 @@ def update_ev(cfg: CFG, ev: dict, val: dict) -> bool:
                     dest_block = jmp.arg2
 
                     if value is Constants.non_constant:
-                        # print("yo",ev)
                         modified |= update_dict(ev, dest_block, True)
                     elif value is Constants.unused:
                         break  # Stop further updates to this block
@@ -172,13 +174,11 @@ def update_val(cfg: CFG, ev: dict, val: dict) -> bool:
                     if opcode == "call":
                         modified |= update_dict(
                             val, dest, Constants.non_constant)
-
                     elif all(val[arg] not in {Constants.non_constant, Constants.unused} for arg in instr.uses()):
                         modified |= update_dest(instr, dest, val)
                     elif any(val[arg] is Constants.non_constant for arg in instr.uses()):
                         modified |= update_dict(
                             val, dest, Constants.non_constant)
-    # print(val)
     return modified
 
 
@@ -191,18 +191,19 @@ def remove_instrs(cfg: CFG, ev: dict, val: dict):
     for label, block in cfg.items():
         new_body = []
         for instr in block.body:
-            # print("--")
-            # print()
-            #print([use[1] if isinstance(use,tuple) else use for use in instr.uses()])
-            # print(val)
-            try:
-                if not any([val[use[1]] == Constants.unused if isinstance(use, tuple) else val[use] == Constants.unused for use in instr.uses()]):
+            if instr.opcode == 'param':
+                new_body.append(instr)
+            else:
+                uses = [val[use[1]] == Constants.unused if isinstance(
+                    use, tuple) else val[use] == Constants.unused for use in instr.uses()]
+                uses.append(instr.dest == Constants.unused)
+                print(instr)
+                print(uses)
+                if not any(uses):
                     new_body.append(instr)
-                # print("ok")
-            except:
-                print('bug', instr)
+                else:
+                    print(instr)
 
-        # Adding block.jumps in the new block is a potential bug
         new_blocks.append(Block(label, new_body, block.jumps))
 
     return CFG(cfg.proc_name, cfg.lab_entry, new_blocks)
@@ -215,7 +216,6 @@ def remove_blocks(cfg: CFG, ev: dict, val: dict):
     for label_block in ev:
 
         if not ev[label_block]:
-            #dest = cfg._blockmap[label_block].jumps[-1].arg1
 
             for block in cfg._blockmap:
                 new_jump_list = []
@@ -224,20 +224,6 @@ def remove_blocks(cfg: CFG, ev: dict, val: dict):
                         new_jump_list.append(jump)
                 cfg._blockmap[block].jumps = new_jump_list
             cfg.remove_node(cfg._blockmap[label_block])
-
-            # if jump.arg1 == label_block :
-            #     jump.arg1 = dest
-            # if jump.arg2 == label_block :
-            #     jump.arg2 = dest
-
-            # for instr in cfg._blockmap[block].body :
-            #     if instr.opcode == "phi" :
-            #         print("phi",instr.arg1)
-            #         for label, temp in instr.arg1.items() :
-            #             if label == label_block :
-            #                 for label_pred in list(cfg._fwd[label_block]) :
-            #                 instr.arg1[]
-            #                 print("forc",cfg._fwd[label_block])
 
 
 def replace_temporary(cfg: CFG, ev: dict, val: dict):
@@ -270,18 +256,19 @@ def optimize_sccp(decl: Proc):
     '''Perform sccp for the given declaration'''
 
     cfg = infer(decl)
+
     crude_ssagen(decl, cfg)
     ev, val = initialize_conditions(cfg)
+    print(val)
     modified = True
     while modified:
         modified = False
         modified |= update_ev(cfg, ev, val)
         modified |= update_val(cfg, ev, val)
-    print(decl.name,ev)
-    remove_blocks(cfg, ev, val)    
-    linearize(decl, cfg)
 
+    remove_blocks(cfg, ev, val)
     cfg = remove_instrs(cfg, ev, val)
+    linearize(decl, cfg)
 
 
 def exe_tac(tac_list: List):

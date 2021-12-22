@@ -120,7 +120,8 @@ class Instr:
     @staticmethod
     def _istemp(thing):
         return (isinstance(thing, str) and \
-                thing.startswith('%') and \
+                (thing.startswith('%') or \
+                thing.startswith('@')) and \
                 not thing.startswith('%.L'))
 
     def defs(self):
@@ -132,11 +133,12 @@ class Instr:
         Each item of the terator is either a temporary by itself or a
         2-tuple of the form (label, temporary) that corresponds to an
         argument of a phi-function."""
-        if self._istemp(self.arg1): yield self.arg1
-        if self._istemp(self.arg2): yield self.arg2
-        if self.opcode == 'phi':
-            for l, t in self.arg1.items():
-                if self._istemp(t): yield (l, t)
+        if self.opcode != 'call':
+            if self._istemp(self.arg1): yield self.arg1
+            if self._istemp(self.arg2): yield self.arg2
+            if self.opcode == 'phi':
+                for l, t in self.arg1.items():
+                    if self._istemp(t): yield (l, t)
 
     def rewrite_temps(self, rew):
         """Apply `rew' to rewrite the temps in this instruction. If `rew' is a
