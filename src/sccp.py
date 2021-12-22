@@ -28,7 +28,7 @@ def fetch_temporaries(cfg: CFG):
 
             temps.add(instruction.dest)
 
-    if None in temps: 
+    if None in temps:
         temps.remove(None)
 
     return list(temps)
@@ -171,12 +171,15 @@ def update_val(cfg: CFG, ev: dict, val: dict) -> bool:
                                 modified |= update_dict(
                                     val, dest, val[temporary_i])
                 else:
-                    if opcode == "call":
+                    if opcode == "call" and dest:
                         modified |= update_dict(
                             val, dest, Constants.non_constant)
+                    # if next(instr.uses(), None) is not None:
+                    elif opcode == 'param' or opcode == 'call':
+                        continue
                     elif all(val[arg] not in {Constants.non_constant, Constants.unused} for arg in instr.uses()):
                         modified |= update_dest(instr, dest, val)
-                    elif any(val[arg] is Constants.non_constant for arg in instr.uses()):
+                    elif any(val[arg] == Constants.non_constant for arg in instr.uses()):
                         modified |= update_dict(
                             val, dest, Constants.non_constant)
     return modified
@@ -196,13 +199,10 @@ def remove_instrs(cfg: CFG, ev: dict, val: dict):
             else:
                 uses = [val[use[1]] == Constants.unused if isinstance(
                     use, tuple) else val[use] == Constants.unused for use in instr.uses()]
-                uses.append(instr.dest == Constants.unused)
-                print(instr)
-                print(uses)
+                if instr.dest:
+                    uses.append(val[instr.dest] == Constants.unused)
                 if not any(uses):
                     new_body.append(instr)
-                else:
-                    print(instr)
 
         new_blocks.append(Block(label, new_body, block.jumps))
 
@@ -226,30 +226,25 @@ def remove_blocks(cfg: CFG, ev: dict, val: dict):
             cfg.remove_node(cfg._blockmap[label_block])
 
 
-def replace_temporary(cfg: CFG, ev: dict, val: dict):
+def replace_temporaries(cfg: CFG, ev: dict, val: dict):
     '''Whenever we have Val(u) = c ∈ {T,⊥}, we replace u 
     with c and delete the instruction that sets u 
     '''
-
-    # Replace i with c :
-
     not_consts = {Constants.unused, Constants.non_constant}
 
-    for block in cfg._blockmap:
-        for instr in block.body:
-            if val[instr.dest] not in not_consts:
-                instr.dest = val[instr.dest]
-            if instr.opcode != "phi":
-                if val[instr.arg1] not in not_consts:
-                    instr.arg1 = val[instr.arg1]
-                if val[instr.arg2] not in not_consts:
-                    instr.arg2 = val[instr.arg2]
-            else:
-                pass
-
-                # FIXME: Handle phi function case
-
-    # FIXME: delete the instruction that sets u :
+    for u, c in val.items():
+        if c not in not_consts:
+            for label, block in cfg._blockmap.items():
+                instr_list = []
+                for instr in block.body:
+                    # Remove the instruction
+                    if instr.dest and instr.dest == u:
+                        continue
+                    # Replace u with c
+                    if u in instr.uses():
+                        instr.replace_use(u, c)
+                    instr_list.append(instr)
+                cfg._blockmap[label] = Block(label, instr_list)
 
 
 def optimize_sccp(decl: Proc):
@@ -258,8 +253,11 @@ def optimize_sccp(decl: Proc):
     cfg = infer(decl)
 
     crude_ssagen(decl, cfg)
+    # for block in cfg._blockmap.values():
+    #     for instr in block.body:
+    #         print(instr)
+    # print()
     ev, val = initialize_conditions(cfg)
-    print(val)
     modified = True
     while modified:
         modified = False
@@ -268,6 +266,10 @@ def optimize_sccp(decl: Proc):
 
     remove_blocks(cfg, ev, val)
     cfg = remove_instrs(cfg, ev, val)
+    replace_temporaries(cfg, ev, val)
+    # for block in cfg._blockmap.values():
+    #     for instr in block.body:
+    #         print(instr)
     linearize(decl, cfg)
 
 

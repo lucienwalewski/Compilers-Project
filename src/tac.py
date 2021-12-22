@@ -140,6 +140,17 @@ class Instr:
                 for l, t in self.arg1.items():
                     if self._istemp(t): yield (l, t)
 
+    def replace_use(self, u, c) -> None:
+        """Replace u with c for all the uses of u in the instruction"""
+        if self.opcode == 'phi':
+            for l, t in self.arg1.items():
+                if t == u: self.arg1[l] = c
+        else:
+            if self.arg1 == u: 
+                self.arg1 = c
+            if self.arg2 == u:
+                self.arg2 = c
+
     def rewrite_temps(self, rew):
         """Apply `rew' to rewrite the temps in this instruction. If `rew' is a
         dictionary, then it will be used to look up the new mapping of
