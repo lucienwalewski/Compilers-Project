@@ -46,7 +46,6 @@ def initialize_conditions(cfg: CFG):
         for instr in block.instrs():
             if instr.opcode == 'ret' and instr.arg1:
                 val[instr.arg1] = Constants.non_constant
-                
 
     ev = {label: (True if label == cfg.lab_entry else False)
           for label in cfg._blockmap}
@@ -76,7 +75,6 @@ def update_ev(cfg: CFG, ev: dict, val: dict) -> bool:
     for block, executed in ev.items():
         definite_jmp = False  # Set to true when a definite jump is found
         if executed:
-            # print("entry",block)
             for jmp in cfg._blockmap[block].reversed_jumps():
 
                 jmp_type = jmp.opcode
@@ -137,12 +135,11 @@ def update_dest(instr: Instr, dest: str, val: dict):
     # FIXME : need a dictionnary to map optcode to symbol for the eval function : example : "add" --> "+"
     old_value = val[dest]
     if instr.opcode in binops:
-        val[dest] = binops[instr.opcode](int(val[instr.arg1]), int(val[instr.arg2]))
-        print(val[dest])
+        val[dest] = binops[instr.opcode](instr.arg1, instr.arg2)
     elif instr.opcode == 'const':
         val[dest] = instr.arg1
     elif instr.opcode in unops:
-        val[dest] = unops[instr.opcode](int(val[instr.arg1]))
+        val[dest] = unops[instr.opcode](instr.arg1)
     return old_value != val[dest]
 
 
@@ -247,13 +244,12 @@ def replace_temporaries(cfg: CFG, ev: dict, val: dict):
         if c not in not_consts:
             for label, block in cfg._blockmap.items():
                 instr_list = []
-                for instr in block.body:
+                for instr in block.instrs():
                     # Remove the instruction
                     if instr.dest and instr.dest == u:
                         continue
                     # Replace u with c
                     if u in instr.uses():
-                        print("yo",c)
                         instr.replace_use(u, c)
                     instr_list.append(instr)
                 cfg._blockmap[label] = Block(label, instr_list)
@@ -277,7 +273,7 @@ def optimize_sccp(decl: Proc):
     # for block in cfg._blockmap.values():
     #     for instr in block.instrs():
     #         print(instr)
-    # replace_temporaries(cfg, ev, val)
+    replace_temporaries(cfg, ev, val)
     linearize(decl, cfg)
     print(decl)
 
