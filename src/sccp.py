@@ -270,9 +270,6 @@ def optimize_sccp(decl: Proc):
 
     remove_blocks(cfg, ev, val)
     cfg = remove_instrs(cfg, ev, val)
-    # for block in cfg._blockmap.values():
-    #     for instr in block.instrs():
-    #         print(instr)
     replace_temporaries(cfg, ev, val)
     linearize(decl, cfg)
     print(decl)
@@ -318,7 +315,11 @@ if __name__ == "__main__":
             json.dump([decl.js_obj for decl in new_tac_list], f)
     # Execute the program
     else:
-        exe_tac(new_tac_list)
+        try:
+            exe_tac(new_tac_list)
+        except Exception as e:
+            print(f'Problem executing: {e} (most likely due to execute not handling immediates)')
+            sys.exit(1)
 
         # cfg.write_dot(fname + '.dot')
         # os.system(f'dot -Tpdf -O {fname}.dot.{tac_unit.name[1:]}.dot')
