@@ -20,6 +20,12 @@ class Block:
         self.body = list(body or [])
         self.jumps = list(jumps or [])
 
+    def __getitem__(self, index):
+        return self.body[index]
+
+    def __setitem__(self, index, new_instr):
+        self.body[index] = new_instr
+
     def instrs(self) -> Iterator[tac.Instr]:
         """Iterator over the instructions in the block (excluding label)"""
         for instr in self.body:
