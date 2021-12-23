@@ -111,7 +111,7 @@ binops = {
     'add': (lambda u, v: u + v),
     'sub': (lambda u, v: u - v),
     'mul': (lambda u, v: u * v),
-    'div': (lambda u, v: int(u / v)),
+    'div': (lambda u, v: u / v),
     'mod': (lambda u, v: u - v * int(u / v)),
     'and': (lambda u, v: u & v),
     'or': (lambda u, v: u | v),
@@ -132,11 +132,12 @@ def update_dest(instr: Instr, dest: str, val: dict):
     # FIXME : need a dictionnary to map optcode to symbol for the eval function : example : "add" --> "+"
     old_value = val[dest]
     if instr.opcode in binops:
-        val[dest] = binops[instr.opcode](instr.arg1, instr.arg2)
+        val[dest] = binops[instr.opcode](int(val[instr.arg1]), int(val[instr.arg2]))
+        print(val[dest])
     elif instr.opcode == 'const':
         val[dest] = instr.arg1
     elif instr.opcode in unops:
-        val[dest] = unops[instr.opcode](instr.arg1)
+        val[dest] = unops[instr.opcode](int(val[instr.arg1]))
     return old_value != val[dest]
 
 
@@ -242,6 +243,7 @@ def replace_temporaries(cfg: CFG, ev: dict, val: dict):
                         continue
                     # Replace u with c
                     if u in instr.uses():
+                        print("yo",c)
                         instr.replace_use(u, c)
                     instr_list.append(instr)
                 cfg._blockmap[label] = Block(label, instr_list)
@@ -271,6 +273,7 @@ def optimize_sccp(decl: Proc):
     #     for instr in block.body:
     #         print(instr)
     linearize(decl, cfg)
+    print(decl)
 
 
 def exe_tac(tac_list: List):
