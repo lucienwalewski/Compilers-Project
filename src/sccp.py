@@ -42,6 +42,11 @@ def initialize_conditions(cfg: CFG):
             val[v] = Constants.non_constant
         else:
             val[v] = Constants.unused
+    for block in cfg._blockmap.values():
+        for instr in block.instrs():
+            if instr.opcode == 'ret' and instr.arg1:
+                val[instr.arg1] = Constants.non_constant
+                
 
     ev = {label: (True if label == cfg.lab_entry else False)
           for label in cfg._blockmap}
@@ -174,6 +179,9 @@ def update_val(cfg: CFG, ev: dict, val: dict) -> bool:
                     if opcode == "call" and dest:
                         modified |= update_dict(
                             val, dest, Constants.non_constant)
+                    elif opcode == "ret":
+                        modified |= update_dict(
+                            val, dest, Constants.non_constant)
                     # if next(instr.uses(), None) is not None:
                     elif opcode == 'param' or opcode == 'call':
                         continue
@@ -203,6 +211,8 @@ def remove_instrs(cfg: CFG, ev: dict, val: dict):
                     uses.append(val[instr.dest] == Constants.unused)
                 if not any(uses):
                     new_body.append(instr)
+                else:
+                    print(instr, uses)
 
         new_blocks.append(Block(label, new_body, block.jumps))
 
@@ -253,10 +263,6 @@ def optimize_sccp(decl: Proc):
     cfg = infer(decl)
 
     crude_ssagen(decl, cfg)
-    # for block in cfg._blockmap.values():
-    #     for instr in block.body:
-    #         print(instr)
-    # print()
     ev, val = initialize_conditions(cfg)
     modified = True
     while modified:
@@ -266,10 +272,10 @@ def optimize_sccp(decl: Proc):
 
     remove_blocks(cfg, ev, val)
     cfg = remove_instrs(cfg, ev, val)
-    replace_temporaries(cfg, ev, val)
     # for block in cfg._blockmap.values():
-    #     for instr in block.body:
+    #     for instr in block.instrs():
     #         print(instr)
+    # replace_temporaries(cfg, ev, val)
     linearize(decl, cfg)
 
 
