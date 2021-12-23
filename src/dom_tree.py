@@ -1,7 +1,9 @@
 from os import name
+import os
 import sys
 import json
 import argparse
+from copy import deepcopy
 from cfg import CFG, infer
 from tac import load_tac, Proc
 
@@ -15,12 +17,23 @@ def compute_dom_tree(cfg: CFG):
         if v != cfg.lab_entry:
             dom_iter[v] = set(cfg.blocks())
     while True:
-        dom = dom_iter
+        dom = deepcopy(dom_iter)
         for v in cfg.blocks():
             if v != cfg.lab_entry:
-                dom_iter[v].update(set.intersection(*(dom[u] for u in cfg._bwd[v])))
+                dom_iter[v] = {v} | set.intersection(
+                    *(dom[u] for u in cfg._bwd[v]))
         if dom == dom_iter:
+            # # Remove itself and nodes not directly above to obtain strict dominators only
+            for label in dom:
+                if label in dom[label]:
+                    dom[label].remove(label)
+                strict_doms = set()
+                for V in dom[label]:
+                    if V in cfg._bwd[label]:
+                        strict_doms.add(V)
+                    dom[label] = strict_doms
             return dom
+
 
 if __name__ == "__main__":
     # Parse the command line arguments
@@ -44,3 +57,6 @@ if __name__ == "__main__":
             cfg = infer(decl)
             dom = compute_dom_tree(cfg)
             print(dom)
+
+            cfg.write_dot(fname + '.dot')
+            os.system(f'dot -Tpdf -O {fname}.dot.{decl.name[1:]}.dot')
