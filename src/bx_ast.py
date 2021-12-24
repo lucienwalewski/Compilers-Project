@@ -204,6 +204,7 @@ class OpApp(Expr):
                        'BITSHL', 'BITSHR', 'NEG', 'BITCOMPL'
                        } and all([arg.ty.ty_str == 'int' for arg in self.args]):
             self.ty = Ty(self.sloc, 'int')
+
             if self.op == 'MINUS' and len(self.args) == 1:
                 self.op = 'UMINUS'
         elif self.op in {'EQUALITY', 'DISEQUALITY',
