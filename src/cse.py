@@ -91,13 +91,10 @@ def local_cse(block: Block):
 
 def global_cse(cfg: CFG) -> CFG:
     """Apply common subexpression elimination
-    to the cfg. We first perform local cse on each block 
-    before performing global cse"""
+    to the cfg. We assume local cse has already been applied"""
 
-    # Perform local cse on each block
-    for block in cfg._blockmap.values():
-        local_cse(block)
     # Compute the dominator tree and mapping from expressions to instructions
+    # as well as the available expressions at the end of each block
     dom = compute_dom_tree(cfg)
     expr_map = expr_map_cfg(cfg)
     avail_expr_map = available_expr(cfg)
