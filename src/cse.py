@@ -1,13 +1,13 @@
-from os import name
-import sys
-import json
 import argparse
+import sys
 from collections import defaultdict
-from typing import Generator, Iterator
+from os import name
+from typing import Generator
+
 from cfg import CFG, Block, infer, linearize
-from tac import load_tac, Proc, Instr
 from dom_tree import compute_dom_tree
 from sccp import binops, unops
+from tac import Instr, Proc, load_tac
 
 
 def expr_map_block(block: Block) -> dict:

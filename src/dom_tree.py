@@ -1,11 +1,10 @@
-from os import name
+import argparse
 import os
 import sys
-import json
-import argparse
 from copy import deepcopy
+
 from cfg import CFG, infer
-from tac import load_tac, Proc
+from tac import Proc, load_tac
 
 
 def compute_dom_tree(cfg: CFG):

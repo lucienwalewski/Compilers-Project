@@ -1,16 +1,16 @@
-import sys
 import argparse
-from enum import Enum, auto
-from ssagen import crude_ssagen
-from tac import Proc
-from cfg import CFG, infer
-
-
-from typing import List, Union
-from cfg import *
-from ssagen import *
-from tac import *
 import copy
+import sys
+from enum import Enum, auto
+from typing import List, Union
+
+from cfg import *
+from cfg import CFG, infer
+from ssagen import *
+from ssagen import crude_ssagen
+from tac import *
+from tac import Proc
+
 
 def minimize(cfg : CFG) -> CFG:
     """Performs minimization"""

@@ -6,7 +6,7 @@ from typing import List, Union
 
 from cfg import CFG, Block, infer, linearize
 from ssagen import crude_ssagen
-from tac import Instr, Proc, load_tac, Gvar, execute
+from tac import Gvar, Instr, Proc, execute, load_tac
 
 
 class Constants(Enum):
