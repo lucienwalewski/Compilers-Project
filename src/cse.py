@@ -10,13 +10,7 @@ from dom_tree import compute_dom_tree
 from sccp import binops, unops
 
 
-
-
-def replace_operation(block, dominating_block, instr, duplicate_instr):
-    """Replace the operation with a copy"""
-    pass
-
-def expr_map_block(block: Block):
+def expr_map_block(block: Block) -> dict:
     """Given a block, construct the mapping
     of expressions to instructions"""
     expr_map = defaultdict(set)
@@ -26,7 +20,7 @@ def expr_map_block(block: Block):
     return expr_map
 
 
-def expr_map_cfg(cfg: CFG):
+def expr_map_cfg(cfg: CFG) -> dict:
     """Given a cfg, construct the mapping of expressions for
     each block"""
     expressions = {}
@@ -58,6 +52,16 @@ def partition(values: list, indices: list) -> Generator:
             idx += 1
         if sublist:
             yield sublist
+    yield values[idx:]
+
+
+def available_expr(cfg: CFG) -> dict:
+    """For each block, calculate the set of instructions
+    available when exiting the block"""
+    avail_expr_map = {}
+    for block in cfg._blockmap.values():
+        avail_expr_map[block] = set()
+        pass
 
 
 def local_cse(block: Block):
@@ -69,20 +73,30 @@ def local_cse(block: Block):
             redefinitions = find_redefinitions(block, expr[1])
             if expr[2]:
                 redefinitions.update(find_redefinitions(block, expr[2]))
+            redefinitions = sorted(list(redefinitions))
             for sublist in partition(instructions, redefinitions):
                 if len(sublist) > 1:
                     for instr_idx in sublist[1:]:
-                        block.instrs[instr_idx] = Instr(block.instrs[instr_idx].dest, 'copy', block.instrs[sublist[0]].dest)
+                        block[instr_idx] = Instr(block[instr_idx].dest, 'copy', [block[sublist[0]].dest])
             
 def global_cse(cfg: CFG):
     """Apply common subexpression elimination
-    to the cfg"""
+    to the cfg. We first perform local cse on each block 
+    before performing global cse"""
 
-    # First compute the domintor tree
-    dom = compute_dom_tree(cfg)
+    # Perform local cse on each block
     for block in cfg._blockmap.values():
         local_cse(block)
-    # expressions = expr_map_cfg(cfg)
+    # Compute the dominator tree and mapping from expressions to instructions
+    dom = compute_dom_tree(cfg)
+    expr_map = expr_map_cfg(cfg)
+
+    # Loop over the blocks
+    for block in expr_map:
+        # Loop over the blocks dominating the block
+        for dom_block in dom[block]:
+            pass
+
 
     # # First replace duplicate expressions within the same block
     # # Loop over the blocks
@@ -127,5 +141,10 @@ if __name__ == "__main__":
     for count, decl in enumerate(tac_list):
         if isinstance(decl, Proc):
             cfg = infer(decl)
-            global_cse(cfg)
+            # global_cse(cfg)
+            for block in cfg._blockmap.values():
+                local_cse(block)
+                for instr in block.instrs():
+                    print(instr)
+                
             

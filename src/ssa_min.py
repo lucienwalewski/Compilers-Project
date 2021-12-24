@@ -17,8 +17,8 @@ def minimize(cfg : CFG) -> CFG:
     modif1, modif2 = True, True
     while modif1 or modif2: 
         # We run the minimization until there are no more modification
-        modif1, cfg = rename(cfg)
-        modif2, cfg = NCE(cfg)
+        modif1, cfg = NCE(cfg)
+        modif2, cfg = rename(cfg)  
     return cfg
 
 def show_cfg(cfg : CFG):
@@ -61,7 +61,12 @@ def rename(cfg:CFG) -> CFG:
             to_replace = instr.dest # Temp that we should replace
             to_use = set(list(instr.arg1.values())) 
             if to_replace in to_use: to_use.remove(to_replace)
-            to_use = to_use.pop() # Temp we should use instead
+            try:
+                to_use = to_use.pop() # Temp we should use instead
+            except:
+                print(to_replace , to_use)
+                raise KeyError
+            
             new_blocks = []
             for block in cfg._blockmap.values():
                 # We iterate over the cfg to edit the instruction that have to be
@@ -129,9 +134,13 @@ if __name__=='__main__':
         if isinstance(tlv, tac.Proc):
             cfg = cfglib.infer(tlv)
             crude_ssagen(tlv, cfg)
+            for ins in cfg.instrs():
+                print(ins)
+            print('\n\n')
             cfg = minimize(cfg)
             # print(tlv)
             for ins in cfg.instrs():
-                 print(ins)
+                print(ins)
+            print('\n\n')
             # make_dotfiles(cfg, tlv.name[1:], args.file[0], args.verbosity)
             # if args.verbosity >= 2:
