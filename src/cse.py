@@ -3,6 +3,7 @@ import sys
 import json
 import argparse
 from collections import defaultdict
+from typing import Generator, Iterator
 from cfg import CFG, Block, infer
 from tac import load_tac, Proc, Instr
 from dom_tree import compute_dom_tree
@@ -37,13 +38,26 @@ def expr_map_cfg(cfg: CFG):
                     instr.opcode, instr.arg1, instr.arg2 if instr.arg2 else None)].add(index)
     return expressions
 
-def find_redefinitions(block: Block, arg: str):
+def find_redefinitions(block: Block, arg: str) -> set:
     """Find the instructions indices where an argument is redefined"""
-    indices = []
+    indices = set()
     for index, instr in enumerate(block.instrs()):
         if instr.dest == arg:
-            indices.append(index)
+            indices.add(index)
     return indices
+
+def partition(values: list, indices: list) -> Generator:
+    """Given a list of values, partition the list
+    into sublists based on the list of indices. 
+    This function was taken from stackoverflow"""
+    idx = 0
+    for index in indices:
+        sublist = []
+        while idx < len(values) and values[idx] < index:
+            sublist.append(values[idx])
+            idx += 1
+        if sublist:
+            yield sublist
 
 
 def local_cse(block: Block):
@@ -52,24 +66,22 @@ def local_cse(block: Block):
     for expr, instructions in expr_map.items():
         if len(instructions) > 1:
             instructions = sorted(list(instructions))
-            redefinitions1 = find_redefinitions(block, expr[1])
+            redefinitions = find_redefinitions(block, expr[1])
             if expr[2]:
-                redefinitions2 = find_redefinitions(block, expr[2])
-            # FIXME:
-            # Given the instruction indices and the redefinition indices, 
-            # compute which instructions can be replaced
-     
-
-
-
-
+                redefinitions.update(find_redefinitions(block, expr[2]))
+            for sublist in partition(instructions, redefinitions):
+                if len(sublist) > 1:
+                    for instr_idx in sublist[1:]:
+                        block.instrs[instr_idx] = Instr(block.instrs[instr_idx].dest, 'copy', block.instrs[sublist[0]].dest)
+            
 def global_cse(cfg: CFG):
     """Apply common subexpression elimination
     to the cfg"""
 
     # First compute the domintor tree
     dom = compute_dom_tree(cfg)
-    print(dom)
+    for block in cfg._blockmap.values():
+        local_cse(block)
     # expressions = expr_map_cfg(cfg)
 
     # # First replace duplicate expressions within the same block
@@ -115,3 +127,5 @@ if __name__ == "__main__":
     for count, decl in enumerate(tac_list):
         if isinstance(decl, Proc):
             cfg = infer(decl)
+            global_cse(cfg)
+            
