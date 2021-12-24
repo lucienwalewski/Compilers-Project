@@ -135,8 +135,8 @@ def update_dest(instr: Instr, dest: str, val: dict):
     # FIXME : need a dictionnary to map optcode to symbol for the eval function : example : "add" --> "+"
     old_value = val[dest]
     if instr.opcode in binops:
-        val[dest] = binops[instr.opcode](int(val[instr.arg1]), int(val[instr.arg2]))
-        print(val[dest])
+        val[dest] = binops[instr.opcode](
+            int(val[instr.arg1]), int(val[instr.arg2]))
     elif instr.opcode == 'const':
         val[dest] = instr.arg1
     elif instr.opcode in unops:
@@ -209,11 +209,7 @@ def remove_instrs(cfg: CFG, ev: dict, val: dict):
                 if instr.dest:
                     uses.append(val[instr.dest] == Constants.unused)
                 if not any(uses):
-                    print(instr.dest)
-                    print(uses)
                     new_body.append(instr)
-                else:
-                    print(instr, uses)
 
         new_blocks.append(Block(label, new_body, block.jumps))
 
@@ -225,9 +221,7 @@ def remove_blocks(cfg: CFG, ev: dict, val: dict):
     blocks. Modifies the cfg inplace.
     '''
     for label_block in ev:
-
         if not ev[label_block]:
-
             for block in cfg._blockmap:
                 new_jump_list = []
                 for jump in cfg._blockmap[block].jumps:
@@ -247,7 +241,7 @@ def replace_temporaries(cfg: CFG, ev: dict, val: dict):
         if c not in not_consts:
             for label, block in cfg._blockmap.items():
                 instr_list = []
-                for instr in block.instrs():
+                for instr in block.body:
                     # Remove the instruction
                     if instr.dest and instr.dest == u:
                         continue
@@ -255,27 +249,28 @@ def replace_temporaries(cfg: CFG, ev: dict, val: dict):
                     if u in instr.uses():
                         instr.replace_use(u, c)
                     instr_list.append(instr)
-                cfg._blockmap[label] = Block(label, instr_list)
+                jmp_list = []
+                for jmp in block.jumps:
+                    if u in jmp.uses():
+                        jmp.replace_use(u, c)
+                    jmp_list.append(jmp)
+                cfg._blockmap[label] = Block(label, instr_list, jmp_list)
+    return cfg
 
 
-def optimize_sccp(decl: Proc):
-    '''Perform sccp for the given declaration'''
+def optimize_sccp(cfg: CFG) -> CFG:
+    '''Perform sccp for the given cfg'''
 
-    cfg = infer(decl)
-
-    crude_ssagen(decl, cfg)
     ev, val = initialize_conditions(cfg)
     modified = True
     while modified:
         modified = False
         modified |= update_ev(cfg, ev, val)
         modified |= update_val(cfg, ev, val)
-
     remove_blocks(cfg, ev, val)
     cfg = remove_instrs(cfg, ev, val)
-    replace_temporaries(cfg, ev, val)
-    linearize(decl, cfg)
-    print(decl)
+    cfg = replace_temporaries(cfg, ev, val)
+    return cfg
 
 
 def exe_tac(tac_list: List):
@@ -321,7 +316,8 @@ if __name__ == "__main__":
         try:
             exe_tac(new_tac_list)
         except Exception as e:
-            print(f'Problem executing: {e} (most likely due to execute not handling immediates)')
+            print(
+                f'Problem executing: {e} (most likely due to execute not handling immediates)')
             sys.exit(1)
 
         # cfg.write_dot(fname + '.dot')
