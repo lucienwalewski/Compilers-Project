@@ -45,4 +45,4 @@ GCP was already seen in lab5
 ## General remarks
 
 - The final deliverable is `optimize_tac.py` and _not_ `bx2tac_doft.py`. This is because the bx->tac pass from our lab4 was not entirely correct so we deemed it unnecessary to add it into the final project as it does not add any value. Therefore, the final file takes tac and produces optimized tac.
-- The provided function `execute` does not work with the optimized tac as it does not support immediate values in certain instructions. This also applies to `tacrun.py`.
+- The provided function `execute` does not work with the optimized tac as it does not support immediate values in certain instructions. This also applies to `tacrun.py`. Subsequently, all testing was done by hand.
