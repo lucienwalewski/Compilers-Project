@@ -24,8 +24,6 @@
 
 # File descriptions
 
-In order of importance:
-
 ### sccp.py
 
 Contains the sccp algorithm. We first initialize the dictionaries `ev` and `val` before updating them until there are no further changes. Having done this, we can remove the redundant blocks given by `ev` and remove the redundant instructions as well as replace constant temporaries with `val`.
@@ -43,3 +41,8 @@ Having performed local cse we can apply global cse to the entire cfg. This invol
 GCP was already seen in lab5
 
 ### ssa_min.py
+
+## General remarks
+
+- The final deliverable is `optimize_tac.py` and _not_ `bx2tac_doft.py`. This is because the bx->tac pass from our lab4 was not entirely correct so we deemed it unnecessary to add it into the final project as it does not add any value. Therefore, the final file takes tac and produces optimized tac.
+- The provided function `execute` does not work with the optimized tac as it does not support immediate values in certain instructions. This also applies to `tacrun.py`.
