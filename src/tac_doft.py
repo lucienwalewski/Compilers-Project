@@ -34,12 +34,11 @@ def DSE(cfg: CFG) -> CFG:
     return cfg
 
 
-def GCP(tlv, cfg: CFG) -> CFG:
+def GCP(cfg: CFG) -> CFG:
     """
     Global Copy Propagation. This is a one-shot procedure.
     """
     new_body = []
-    crude_ssagen(tlv, cfg)
     cfg_copy = copy.deepcopy(cfg)
 
     # iterate over all instructions
@@ -75,6 +74,10 @@ def GCP(tlv, cfg: CFG) -> CFG:
             # update cfg
             cfg = CFG(cfg.proc_name, cfg.lab_entry, new_blocks)
 
+    # print(cfg.proc_name)
+    # for block in cfg._blockmap.values():
+    #     print(block)
+
     return cfg
 
 
@@ -83,17 +86,14 @@ def optimize_decl(tac_proc: Union[Gvar, Proc]) -> None:
     Optimize a declaration. First perform DSE as many times as necessary,
     then GCP. 
     """
-   
+
     cfg = infer(tac_proc)
-    
+
     cfg = DSE(cfg)
-    
 
     cfg = GCP(tac_proc, cfg)
     linearize(tac_proc, cfg)
-    
-    
-    
+
 
 def execute(tac_list: List):
     """Execute a TAC program"""
@@ -128,7 +128,7 @@ if __name__ == "__main__":
         if isinstance(decl, Proc):
             optimize_decl(decl)
             print(decl)
-            
+
         new_tac_list.append(decl)
 
     # Write the output file if requested

@@ -38,7 +38,7 @@ class Instr:
         self.opcode = opcode
         self.arg1 = None if len(args) < 1 else args[0]
         self.arg2 = None if len(args) < 2 else args[1]
-        self._check()
+        # self._check() # No longer used as instructions are now more flexible
 
     def __hash__(self):
         return hash(id(self))
@@ -519,12 +519,7 @@ def execute(gvars, procs, proc_name, args, **kwargs):
             oldvalues = values.copy()
             pc = labels[lab_cur]
         elif instr.opcode in jumps:
-            #print(proc)
-            #print("---")
-            #print(instr)
             k = values[instr.arg1]
-            #print(k)
-            #print("--")
             if instr.arg2 not in labels:
         
                 raise RuntimeError(f'Unknown jump destination {instr.arg2}')
