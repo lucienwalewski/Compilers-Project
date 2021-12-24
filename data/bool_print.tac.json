@@ -804,6 +804,13 @@
         "result": null
       },
       {
+        "opcode": "copy",
+        "args": [
+          "%5"
+        ],
+        "result": "%79"
+      },
+      {
         "opcode": "label",
         "args": [
           "%.L.320"

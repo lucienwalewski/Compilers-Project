@@ -28,6 +28,9 @@ def fetch_temporaries(cfg: CFG):
 
             temps.add(instruction.dest)
 
+    if None in temps:
+        temps.remove(None)
+
     return list(temps)
 
 
@@ -39,6 +42,10 @@ def initialize_conditions(cfg: CFG):
             val[v] = Constants.non_constant
         else:
             val[v] = Constants.unused
+    for block in cfg._blockmap.values():
+        for instr in block.instrs():
+            if instr.opcode == 'ret' and instr.arg1:
+                val[instr.arg1] = Constants.non_constant
 
     ev = {label: (True if label == cfg.lab_entry else False)
           for label in cfg._blockmap}
@@ -68,7 +75,6 @@ def update_ev(cfg: CFG, ev: dict, val: dict) -> bool:
     for block, executed in ev.items():
         definite_jmp = False  # Set to true when a definite jump is found
         if executed:
-            # print("entry",block)
             for jmp in cfg._blockmap[block].reversed_jumps():
 
                 jmp_type = jmp.opcode
@@ -83,7 +89,6 @@ def update_ev(cfg: CFG, ev: dict, val: dict) -> bool:
                     dest_block = jmp.arg2
 
                     if value is Constants.non_constant:
-                        # print("yo",ev)
                         modified |= update_dict(ev, dest_block, True)
                     elif value is Constants.unused:
                         break  # Stop further updates to this block
@@ -109,7 +114,7 @@ binops = {
     'add': (lambda u, v: u + v),
     'sub': (lambda u, v: u - v),
     'mul': (lambda u, v: u * v),
-    'div': (lambda u, v: int(u / v)),
+    'div': (lambda u, v: u / v),
     'mod': (lambda u, v: u - v * int(u / v)),
     'and': (lambda u, v: u & v),
     'or': (lambda u, v: u | v),
@@ -169,16 +174,20 @@ def update_val(cfg: CFG, ev: dict, val: dict) -> bool:
                                 modified |= update_dict(
                                     val, dest, val[temporary_i])
                 else:
-                    if opcode == "call":
+                    if opcode == "call" and dest:
                         modified |= update_dict(
                             val, dest, Constants.non_constant)
-
+                    elif opcode == "ret":
+                        modified |= update_dict(
+                            val, dest, Constants.non_constant)
+                    # if next(instr.uses(), None) is not None:
+                    elif opcode == 'param' or opcode == 'call':
+                        continue
                     elif all(val[arg] not in {Constants.non_constant, Constants.unused} for arg in instr.uses()):
                         modified |= update_dest(instr, dest, val)
-                    elif any(val[arg] is Constants.non_constant for arg in instr.uses()):
+                    elif any(val[arg] == Constants.non_constant for arg in instr.uses()):
                         modified |= update_dict(
                             val, dest, Constants.non_constant)
-    # print(val)
     return modified
 
 
@@ -191,18 +200,18 @@ def remove_instrs(cfg: CFG, ev: dict, val: dict):
     for label, block in cfg.items():
         new_body = []
         for instr in block.body:
-            # print("--")
-            # print()
-            #print([use[1] if isinstance(use,tuple) else use for use in instr.uses()])
-            # print(val)
-            try:
-                if not any([val[use[1]] == Constants.unused if isinstance(use, tuple) else val[use] == Constants.unused for use in instr.uses()]):
+            if instr.opcode == 'param':
+                new_body.append(instr)
+            else:
+                uses = [val[use[1]] == Constants.unused if isinstance(
+                    use, tuple) else val[use] == Constants.unused for use in instr.uses()]
+                if instr.dest:
+                    uses.append(val[instr.dest] == Constants.unused)
+                if not any(uses):
                     new_body.append(instr)
-                # print("ok")
-            except:
-                print('bug', instr)
+                else:
+                    print(instr, uses)
 
-        # Adding block.jumps in the new block is a potential bug
         new_blocks.append(Block(label, new_body, block.jumps))
 
     return CFG(cfg.proc_name, cfg.lab_entry, new_blocks)
@@ -215,7 +224,6 @@ def remove_blocks(cfg: CFG, ev: dict, val: dict):
     for label_block in ev:
 
         if not ev[label_block]:
-            #dest = cfg._blockmap[label_block].jumps[-1].arg1
 
             for block in cfg._blockmap:
                 new_jump_list = []
@@ -225,51 +233,33 @@ def remove_blocks(cfg: CFG, ev: dict, val: dict):
                 cfg._blockmap[block].jumps = new_jump_list
             cfg.remove_node(cfg._blockmap[label_block])
 
-            # if jump.arg1 == label_block :
-            #     jump.arg1 = dest
-            # if jump.arg2 == label_block :
-            #     jump.arg2 = dest
 
-            # for instr in cfg._blockmap[block].body :
-            #     if instr.opcode == "phi" :
-            #         print("phi",instr.arg1)
-            #         for label, temp in instr.arg1.items() :
-            #             if label == label_block :
-            #                 for label_pred in list(cfg._fwd[label_block]) :
-            #                 instr.arg1[]
-            #                 print("forc",cfg._fwd[label_block])
-
-
-def replace_temporary(cfg: CFG, ev: dict, val: dict):
+def replace_temporaries(cfg: CFG, ev: dict, val: dict):
     '''Whenever we have Val(u) = c ∈ {T,⊥}, we replace u 
     with c and delete the instruction that sets u 
     '''
-
-    # Replace i with c :
-
     not_consts = {Constants.unused, Constants.non_constant}
 
-    for block in cfg._blockmap:
-        for instr in block.body:
-            if val[instr.dest] not in not_consts:
-                instr.dest = val[instr.dest]
-            if instr.opcode != "phi":
-                if val[instr.arg1] not in not_consts:
-                    instr.arg1 = val[instr.arg1]
-                if val[instr.arg2] not in not_consts:
-                    instr.arg2 = val[instr.arg2]
-            else:
-                pass
-
-                # FIXME: Handle phi function case
-
-    # FIXME: delete the instruction that sets u :
+    for u, c in val.items():
+        if c not in not_consts:
+            for label, block in cfg._blockmap.items():
+                instr_list = []
+                for instr in block.instrs():
+                    # Remove the instruction
+                    if instr.dest and instr.dest == u:
+                        continue
+                    # Replace u with c
+                    if u in instr.uses():
+                        instr.replace_use(u, c)
+                    instr_list.append(instr)
+                cfg._blockmap[label] = Block(label, instr_list)
 
 
 def optimize_sccp(decl: Proc):
     '''Perform sccp for the given declaration'''
 
     cfg = infer(decl)
+
     crude_ssagen(decl, cfg)
     ev, val = initialize_conditions(cfg)
     modified = True
@@ -277,11 +267,12 @@ def optimize_sccp(decl: Proc):
         modified = False
         modified |= update_ev(cfg, ev, val)
         modified |= update_val(cfg, ev, val)
-    print(decl.name,ev)
-    remove_blocks(cfg, ev, val)    
-    linearize(decl, cfg)
 
+    remove_blocks(cfg, ev, val)
     cfg = remove_instrs(cfg, ev, val)
+    replace_temporaries(cfg, ev, val)
+    linearize(decl, cfg)
+    print(decl)
 
 
 def exe_tac(tac_list: List):
@@ -324,7 +315,11 @@ if __name__ == "__main__":
             json.dump([decl.js_obj for decl in new_tac_list], f)
     # Execute the program
     else:
-        exe_tac(new_tac_list)
+        try:
+            exe_tac(new_tac_list)
+        except Exception as e:
+            print(f'Problem executing: {e} (most likely due to execute not handling immediates)')
+            sys.exit(1)
 
         # cfg.write_dot(fname + '.dot')
         # os.system(f'dot -Tpdf -O {fname}.dot.{tac_unit.name[1:]}.dot')
