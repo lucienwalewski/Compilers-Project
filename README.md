@@ -34,13 +34,19 @@ We first apply local cse to each block. This first involves creating a mapping b
 
 Having performed local cse we can apply global cse to the entire cfg. This involves first computing the dominator tree, the mappings between expressions and instructions for each block as well as the available expressions at the end of each block (i.e. their temporaries have not been modified before the end of the block). Then, iterating over the blocks and their respective strict dominators, we see if we can replace the first expression of the block with a copy. 
 
-> Remark: We only have to consider the first expression of the block as we have already applied local cse to the block. This implies that any subsequent expressions in the block that can be optimised are already in the form of a copy.
 
 ### tac_doft.py
 
 GCP was already seen in lab5
 
 ### ssa_min.py
+
+In `minimize` we perform NCE and Renaming until no more modification are made.
+
+In `NCE`, we iterate over the instructions, and modify those which require to be. This is decided by the function `is_nce`.
+
+In `rename`, we iterate over the instructions to find where there are phi's that could be renamed (which is decided by `is_rn`). Once we find one, we propagate the change in the variable's name over the rest of the instructions.
+
 
 ## General remarks
 
