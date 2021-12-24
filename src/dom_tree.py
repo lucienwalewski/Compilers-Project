@@ -22,7 +22,7 @@ def compute_dom_tree(cfg: CFG):
                 dom_iter[v] = {v} | set.intersection(
                     *(dom[u] for u in cfg._bwd[v]))
         if dom == dom_iter:
-            # # Remove itself and nodes not directly above to obtain strict dominators only
+            # Remove itself and nodes not directly above to obtain strict dominators only
             for label in dom:
                 if label in dom[label]:
                     dom[label].remove(label)

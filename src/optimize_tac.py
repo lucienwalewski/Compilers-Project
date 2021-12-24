@@ -57,7 +57,7 @@ if __name__ == "__main__":
         with open(opts.output, 'w') as f:
             json.dump([decl.js_obj for decl in new_tac_list], f)
 
-    # Print to console
+    # Print to console if requested
     if opts.print_cfg:
         for decl in new_tac_list:
             print(decl)

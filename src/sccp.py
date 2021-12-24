@@ -131,8 +131,6 @@ unops = {
 def update_dest(instr: Instr, dest: str, val: dict):
     '''Make an update to the dictionary val based on the instruction
     and return true if the dictionary was modified'''
-    # FIXME : when the instruction is param, the first the function triggers an error
-    # FIXME : need a dictionnary to map optcode to symbol for the eval function : example : "add" --> "+"
     old_value = val[dest]
     if instr.opcode in binops:
         val[dest] = binops[instr.opcode](
