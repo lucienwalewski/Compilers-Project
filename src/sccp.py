@@ -135,11 +135,12 @@ def update_dest(instr: Instr, dest: str, val: dict):
     # FIXME : need a dictionnary to map optcode to symbol for the eval function : example : "add" --> "+"
     old_value = val[dest]
     if instr.opcode in binops:
-        val[dest] = binops[instr.opcode](instr.arg1, instr.arg2)
+        val[dest] = binops[instr.opcode](int(val[instr.arg1]), int(val[instr.arg2]))
+        print(val[dest])
     elif instr.opcode == 'const':
         val[dest] = instr.arg1
     elif instr.opcode in unops:
-        val[dest] = unops[instr.opcode](instr.arg1)
+        val[dest] = unops[instr.opcode](int(val[instr.arg1]))
     return old_value != val[dest]
 
 
@@ -208,6 +209,8 @@ def remove_instrs(cfg: CFG, ev: dict, val: dict):
                 if instr.dest:
                     uses.append(val[instr.dest] == Constants.unused)
                 if not any(uses):
+                    print(instr.dest)
+                    print(uses)
                     new_body.append(instr)
                 else:
                     print(instr, uses)

@@ -1,0 +1,79 @@
+[
+  {
+    "proc": "@main",
+    "args": [],
+    "body": [
+      {
+        "opcode": "label",
+        "args": [
+          "%.L.entry"
+        ],
+        "result": null
+      },
+      {
+        "opcode": "const",
+        "args": [
+          45
+        ],
+        "result": "%6"
+      },
+
+      {
+        "opcode": "param",
+        "args": [
+          1, "%6"
+        ],
+        "result": null
+      },
+      {
+      "opcode": "call",
+      "args": [
+        "@id", 1
+      ],
+      "result": "%1"
+    },
+    {
+      "opcode": "const",
+      "args": [
+        2
+      ],
+      "result": "%2"
+    },
+    {
+      "opcode": "add",
+      "args": [
+        "%1", "%2"
+      ],
+      "result": "%3"
+    },
+    {
+      "opcode": "add",
+      "args": [
+        "%1", "%2"
+      ],
+      "result": "%4"
+    },
+ 
+      {
+        "opcode": "param",
+        "args": [
+          1, "%4"
+        ],
+        "result": null
+      },
+        {
+          "opcode": "call",
+          "args": [
+            "@__bx_print_int",
+            1
+          ],
+          "result": null
+        },
+      {
+        "opcode": "ret",
+        "args": [],
+        "result": null
+      }
+    ]
+  }
+]
