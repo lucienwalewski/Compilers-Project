@@ -4,7 +4,7 @@ import json
 import argparse
 from collections import defaultdict
 from typing import Generator, Iterator
-from cfg import CFG, Block, infer
+from cfg import CFG, Block, infer, linearize
 from tac import load_tac, Proc, Instr
 from dom_tree import compute_dom_tree
 from sccp import binops, unops
@@ -144,7 +144,8 @@ if __name__ == "__main__":
             # global_cse(cfg)
             for block in cfg._blockmap.values():
                 local_cse(block)
-                for instr in block.instrs():
-                    print(instr)
+            linearize(decl,cfg)
+            
+            
                 
             

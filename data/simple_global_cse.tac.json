@@ -64,6 +64,14 @@
           ],
           "result": null
         },
+        {
+          "opcode": "jmp",
+          "args": [
+            "%.L2"
+            
+          ],
+          "result": null
+        },
 
         {
           "opcode": "label",
