@@ -16,7 +16,8 @@ def expr_map_block(block: Block) -> dict:
     expr_map = defaultdict(set)
     for index, instr in enumerate(block.instrs()):
         if instr.opcode in binops or instr.opcode in unops:
-            expr_map[(instr.opcode, instr.arg1, instr.arg2 if instr.arg2 else None)].add(index)
+            expr_map[(instr.opcode, instr.arg1,
+                      instr.arg2 if instr.arg2 else None)].add(index)
     return expr_map
 
 
@@ -32,6 +33,7 @@ def expr_map_cfg(cfg: CFG) -> dict:
                     instr.opcode, instr.arg1, instr.arg2 if instr.arg2 else None)].add(index)
     return expressions
 
+
 def find_redefinitions(block: Block, arg: str) -> set:
     """Find the instructions indices where an argument is redefined"""
     indices = set()
@@ -39,6 +41,7 @@ def find_redefinitions(block: Block, arg: str) -> set:
         if instr.dest == arg:
             indices.add(index)
     return indices
+
 
 def partition(values: list, indices: list) -> Generator:
     """Given a list of values, partition the list
@@ -59,9 +62,14 @@ def available_expr(cfg: CFG) -> dict:
     """For each block, calculate the set of instructions
     available when exiting the block"""
     avail_expr_map = {}
-    for block in cfg._blockmap.values():
-        avail_expr_map[block] = set()
-        pass
+    for label, block in cfg._blockmap.items():
+        avail_expr_map[label] = dict()
+        for idx, instr in enumerate(block.instrs()):
+            if instr.opcode in binops or instr.opcode in unops:
+                if idx >= max(find_redefinitions(block, instr.dest)):
+                    avail_expr_map[label][(
+                        instr.opcode, instr.arg1, instr.arg2 if instr.arg2 else None)] = idx
+    return avail_expr_map
 
 
 def local_cse(block: Block):
@@ -77,9 +85,11 @@ def local_cse(block: Block):
             for sublist in partition(instructions, redefinitions):
                 if len(sublist) > 1:
                     for instr_idx in sublist[1:]:
-                        block[instr_idx] = Instr(block[instr_idx].dest, 'copy', [block[sublist[0]].dest])
-            
-def global_cse(cfg: CFG):
+                        block[instr_idx] = Instr(block[instr_idx].dest, 'copy', [
+                                                 block[sublist[0]].dest])
+
+
+def global_cse(cfg: CFG) -> CFG:
     """Apply common subexpression elimination
     to the cfg. We first perform local cse on each block 
     before performing global cse"""
@@ -90,35 +100,32 @@ def global_cse(cfg: CFG):
     # Compute the dominator tree and mapping from expressions to instructions
     dom = compute_dom_tree(cfg)
     expr_map = expr_map_cfg(cfg)
+    avail_expr_map = available_expr(cfg)
 
     # Loop over the blocks
     for block in expr_map:
         # Loop over the blocks dominating the block
         for dom_block in dom[block]:
-            pass
+            # Loop over the expressions in the dominator block
+            for dom_expr, dom_instr_idx in avail_expr_map[dom_block].items():
+                # Loop over the expressions in the block
+                for expr, instr_indices in expr_map[block].items():
+                    # If the expressions are the same
+                    if dom_expr == expr:
+                        # Check for redefinitions
+                        redefinitions = find_redefinitions(cfg._blockmap[block], expr[1])
+                        if expr[2]:
+                            redefinitions.update(find_redefinitions(cfg._blockmap[block], expr[2]))
+                        # Only replace the first expression as local cse already applied
+                        if not redefinitions or min(redefinitions) > min(instr_indices):
+                            cfg._blockmap[block][min(instr_indices)] = Instr(cfg._blockmap[block][min(instr_indices)].dest, 'copy', [cfg._blockmap[dom_block][dom_instr_idx].dest])
 
-
-    # # First replace duplicate expressions within the same block
-    # # Loop over the blocks
-    # for block in expressions:
-    # # Loop over the blocks dominating the block
-    # for dominating_block in dom[block]:
-    #     # Look over the expressions in the dominating block
-    #     for dom_expr in expressions[dominating_block]:
-    #         # Loop over the expr in the block
-    #         for dupl_expr in expressions[block]:
-    #             # Check if it is indeed a duplicate
-    #             if dupl_expr == dom_expr:
-    #                 print(block, dominating_block, dom_expr, dupl_expr)
-    #                 print(expressions[dominating_block])
-    #                 # Fetch instructions
-    #                 dom_instr = cfg._blockmap[dominating_block][expressions[dominating_block][dom_expr]]
-    #                 dupl_instr = cfg._blockmap[block][expressions[block][dupl_expr]]
-    #                 # Replace the instruction with a copy
-    #                 new_instr = Instr(
-    #                     dupl_instr.dest, 'copy', dom_instr.dest)
-    #                 cfg._blockmap[block][expressions[block]
-    #                                      [dupl_expr]] = new_instr
+def apply_cse(cfg: CFG) -> CFG:
+    """Given a cfg, first apply local cse then global cse"""
+    for block in cfg._blockmap.values():
+        local_cse(block)
+    global_cse(cfg)
+    return cfg
 
 
 if __name__ == "__main__":
@@ -141,12 +148,7 @@ if __name__ == "__main__":
     for count, decl in enumerate(tac_list):
         if isinstance(decl, Proc):
             cfg = infer(decl)
-            # global_cse(cfg)
             for block in cfg._blockmap.values():
                 local_cse(block)
-            linearize(decl,cfg)
-            print(decl)
-            
-            
-                
-            
+            global_cse(cfg)
+            linearize(decl, cfg)
