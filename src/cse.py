@@ -145,6 +145,7 @@ if __name__ == "__main__":
             for block in cfg._blockmap.values():
                 local_cse(block)
             linearize(decl,cfg)
+            print(decl)
             
             
                 
